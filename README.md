@@ -74,7 +74,7 @@ The system supports three user roles (**Admin**, **Trainer**, **Member**), each 
 - Rule-based expert system using: fitness goal, BMI, age, gender, training days/week, experience level, injury history
 - Generates: personalised weekly workout schedule + macronutrient diet guidance + recommended membership plan
 - All recommendations persisted to `ai_recs` table for history tracking
-- Powered by **Claude AI (Anthropic API)** with local rule-engine fallback
+- Powered by a **local rule-based expert system** (no external AI API)
 
 ---
 
@@ -90,7 +90,7 @@ The system supports three user roles (**Admin**, **Trainer**, **Member**), each 
 | Database | MySQL | 5.7+ |
 | Dev Environment | XAMPP | 8.x |
 | Password Hashing | bcrypt (`PASSWORD_BCRYPT`) | PHP built-in |
-| AI Engine | Claude API (Anthropic) + rule engine | — |
+| AI Engine | Local rule-based expert system (JavaScript) | — |
 
 **No frontend framework. No npm dependencies. No build step required.**
 
