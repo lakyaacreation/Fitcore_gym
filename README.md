@@ -97,28 +97,6 @@ The system supports three user roles (**Admin**, **Trainer**, **Member**), each 
 
 ---
 
-## System Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                  Presentation Tier                   │
-│  index.html · styles.css · app.js · api-client.js   │
-│  SPA Router · RBAC Module · API Client (Repository) │
-└───────────────────────┬─────────────────────────────┘
-                        │  HTTP JSON (fetch)
-┌───────────────────────▼─────────────────────────────┐
-│                  Application Tier                    │
-│                    api.php                           │
-│  login · register · CRUD · sql_qry/sql_run proxy    │
-│  book_class · peak_dashboard · save_avatar · stats  │
-└───────────────────────┬─────────────────────────────┘
-                        │  PDO Prepared Statements
-┌───────────────────────▼─────────────────────────────┐
-│                    Data Tier                         │
-│              MySQL — fitcore_db                      │
-│         15 normalised tables (3NF)                  │
-└─────────────────────────────────────────────────────┘
-```
 
 ---
 
@@ -455,7 +433,7 @@ fitcore/
 
 **1. Clone the repository**
 ```bash
-git clone https://github.com/YOUR_USERNAME/fitcore.git
+git clone https://github.com/lakyaacreation/fitcore.git
 ```
 
 **2. Place files in XAMPP**
