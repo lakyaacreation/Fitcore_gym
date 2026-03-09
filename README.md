@@ -501,7 +501,7 @@ http://localhost/fitcore/api.php?action=migrate
 | Member | `ravindu.karunanayake` | `ravindu101` |
 | Member | `thisuri.marasinghe` | `thisuri102` |
 
-The database is seeded with **60 members**, **45+ trainers**, full attendance history, payments, and class schedules for realistic demo data.
+The database is seeded with **160+ members**, **45+ trainers**, full attendance history, payments, and class schedules for realistic demo data.
 
 ---
 
@@ -575,8 +575,8 @@ The `RBAC` constant defines permitted pages and actions per role. `applyRBAC()` 
 | Equipment | ✅ | ❌ | ❌ |
 | Staff | ✅ | ❌ | ❌ |
 | Plans | ✅ | ❌ | ❌ |
-| AI | ✅ | ✅ | ✅ |
-| My Profile | ✅ | ✅ | ✅ |
+| AI | ❌ | ❌ | ✅ |
+| My Profile | ❌ | ❌ | ✅ |
 
 ---
 
