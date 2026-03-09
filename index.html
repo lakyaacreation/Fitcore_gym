@@ -1,0 +1,3721 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FitCore — Gym Management System</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .role-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 8px;
+      border-radius: 12px;
+      border: 2px solid var(--border);
+      background: var(--surface2);
+      cursor: pointer;
+      transition: all .18s;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    .role-card:hover {
+      border-color: var(--primary);
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+
+    .role-card.selected {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, .1);
+      color: var(--text);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, .15);
+    }
+
+    /* ── Schedule grid ── */
+    .sched-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .sched-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(120px, 1fr));
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      min-width: 700px;
+    }
+
+    .sched-day {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      background: var(--surface2);
+      min-height: 480px;
+    }
+
+    .sched-day:last-child {
+      border-right: none;
+    }
+
+    .sched-day.today {
+      background: rgba(99, 102, 241, .05);
+    }
+
+    .sched-day-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      text-align: center;
+      padding: 10px 6px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .sched-day.today .sched-day-label {
+      background: var(--primary);
+      color: #fff;
+      letter-spacing: .5px;
+    }
+
+    .sched-day-body {
+      padding: 8px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .cls-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--primary);
+      border-radius: 8px;
+      padding: 8px;
+      position: relative;
+      cursor: default;
+      transition: box-shadow .15s;
+    }
+
+    .cls-block:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+    }
+
+    .cls-time {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 3px;
+    }
+
+    .cls-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+
+    .cls-det {
+      font-size: 10px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .cls-del {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      border: none;
+      background: none;
+      color: #f43f5e;
+      font-size: 13px;
+      cursor: pointer;
+      opacity: 0;
+      padding: 0 3px;
+      border-radius: 4px;
+      transition: opacity .15s, background .15s;
+      line-height: 1;
+    }
+
+    .cls-block:hover .cls-del {
+      opacity: 1;
+    }
+
+    .cls-del:hover {
+      background: rgba(244, 63, 94, .12);
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, .25);
+      }
+
+      50% {
+        box-shadow: 0 0 0 6px rgba(34, 197, 94, .05);
+      }
+    }
+
+    .tr-live-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      transition: box-shadow .15s;
+    }
+
+    .tr-live-card:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+    }
+
+    .tr-absent-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(239, 68, 68, .15);
+      background: rgba(239, 68, 68, .04);
+      margin-bottom: 6px;
+    }
+
+    .sched-empty {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      opacity: .2;
+      user-select: none;
+    }
+
+    /* ── Peak Hours Monitor — Enhanced ── */
+    @keyframes peakPulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1)
+      }
+
+      50% {
+        opacity: .4;
+        transform: scale(.65)
+      }
+    }
+
+    @keyframes pkFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: none
+      }
+    }
+
+    .pk-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+      flex-wrap: wrap
+    }
+
+    .pk-tab-btn {
+      padding: 9px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all .2s;
+      outline: none;
+      border-radius: 8px 8px 0 0;
+      white-space: nowrap
+    }
+
+    .pk-tab-btn:hover {
+      color: var(--text);
+      background: rgba(249, 115, 22, .05)
+    }
+
+    .pk-tab-btn.active {
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary);
+      background: rgba(249, 115, 22, .06)
+    }
+
+    .pk-day-pill {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap
+    }
+
+    .pk-day-btn {
+      padding: 5px 11px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--surface2);
+      color: var(--text-muted);
+      transition: all .18s;
+      white-space: nowrap
+    }
+
+    .pk-day-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary)
+    }
+
+    .pk-day-btn.active {
+      background: rgba(249, 115, 22, .15);
+      border-color: var(--primary);
+      color: var(--primary)
+    }
+
+    .pk-class-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--border);
+      animation: pkFadeIn .35s ease both
+    }
+
+    .pk-class-row:last-child {
+      border-bottom: none
+    }
+
+    .pk-time {
+      font-family: monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      min-width: 44px
+    }
+
+    .pk-info {
+      flex: 1;
+      min-width: 0
+    }
+
+    .pk-name {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .pk-trainer {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px
+    }
+
+    .pk-bar-wrap {
+      width: 90px
+    }
+
+    .pk-bar-bg {
+      height: 5px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden
+    }
+
+    .pk-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width .65s cubic-bezier(.4, 0, .2, 1)
+    }
+
+    .pk-bar-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-align: right;
+      margin-top: 2px;
+      font-family: monospace
+    }
+
+    .pk-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      min-width: 46px;
+      text-align: center;
+      white-space: nowrap
+    }
+
+    .pk-full {
+      background: rgba(239, 68, 68, .15);
+      color: #ef4444
+    }
+
+    .pk-low {
+      background: rgba(234, 179, 8, .15);
+      color: #eab308
+    }
+
+    .pk-ok {
+      background: rgba(34, 197, 94, .15);
+      color: #22c55e
+    }
+
+    .pk-wait {
+      background: rgba(239, 68, 68, .22);
+      color: #ff6b6b
+    }
+
+    .pk-trainer-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      animation: pkFadeIn .35s ease both
+    }
+
+    .pk-trainer-row:last-child {
+      border-bottom: none
+    }
+
+    .pk-av {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #c2410c);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 13px;
+      color: #fff;
+      flex-shrink: 0
+    }
+
+    .pk-tname {
+      font-size: 13px;
+      font-weight: 600
+    }
+
+    .pk-tmeta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px
+    }
+
+    .pk-load-ring {
+      flex-shrink: 0;
+      position: relative;
+      width: 44px;
+      height: 44px
+    }
+
+    .pk-load-ring svg {
+      transform: rotate(-90deg)
+    }
+
+    .pk-ring-bg {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 5
+    }
+
+    .pk-ring-fill {
+      fill: none;
+      stroke-width: 5;
+      stroke-linecap: round;
+      stroke-dasharray: 107;
+      transition: stroke-dashoffset .7s
+    }
+
+    .pk-ring-lbl {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: monospace
+    }
+
+    .pk-alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      font-size: 12px;
+      line-height: 1.5
+    }
+
+    .pk-alert-item:last-child {
+      margin-bottom: 0
+    }
+
+    .pk-alert-crit {
+      background: rgba(239, 68, 68, .08);
+      border-left: 3px solid #ef4444
+    }
+
+    .pk-alert-warn {
+      background: rgba(234, 179, 8, .08);
+      border-left: 3px solid #eab308
+    }
+
+    .pk-alert-ok {
+      background: rgba(34, 197, 94, .08);
+      border-left: 3px solid #22c55e
+    }
+
+    .pk-alert-info {
+      background: rgba(59, 130, 246, .08);
+      border-left: 3px solid #3b82f6
+    }
+
+    .pk-rule-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-top: 2px solid var(--primary);
+      border-radius: 10px;
+      padding: 12px 14px
+    }
+
+    .pk-rule-day {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 3px
+    }
+
+    .pk-rule-win {
+      font-size: 12px;
+      font-family: monospace;
+      background: rgba(249, 115, 22, .08);
+      color: var(--text);
+      padding: 2px 7px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 6px
+    }
+
+    .pk-rule-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.7
+    }
+
+    .pk-heat-cell {
+      height: 18px;
+      border-radius: 3px;
+      cursor: default;
+      transition: transform .15s ease
+    }
+
+    .pk-heat-cell:hover {
+      transform: scale(1.35);
+      z-index: 1;
+      position: relative
+    }
+
+    .pk-trend-bar {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      height: 70px
+    }
+
+    .pk-trend-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px
+    }
+
+    .pk-trend-b {
+      width: 100%;
+      border-radius: 4px 4px 0 0;
+      background: var(--primary);
+      transition: height .6s cubic-bezier(.4, 0, .2, 1)
+    }
+
+    .pk-trend-lbl {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: monospace
+    }
+
+    .pk-trend-val {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--primary)
+    }
+
+    .pk-tip-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .pk-tip-row:last-child {
+      border-bottom: none
+    }
+
+    .pk-tip-ico {
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-top: 1px
+    }
+
+    .pk-tip-title {
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 2px
+    }
+
+    .pk-tip-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.55
+    }
+
+    .pk-live-dot {
+      width: 6px;
+      height: 6px;
+      background: #22c55e;
+      border-radius: 50%;
+      animation: peakPulse 1.8s ease-in-out infinite;
+      display: inline-block
+    }
+
+    /* Peak action buttons */
+    .pk-action-btn {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      transition: all .18s;
+      white-space: nowrap;
+      line-height: 1.6
+    }
+
+    .pk-action-assign {
+      background: rgba(59, 130, 246, .15);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, .3)
+    }
+
+    .pk-action-assign:hover {
+      background: rgba(59, 130, 246, .28)
+    }
+
+    .pk-action-overflow {
+      background: rgba(249, 115, 22, .15);
+      color: var(--primary);
+      border: 1px solid rgba(249, 115, 22, .3)
+    }
+
+    .pk-action-overflow:hover {
+      background: rgba(249, 115, 22, .28)
+    }
+
+    .pk-action-reassign {
+      background: rgba(239, 68, 68, .12);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, .25)
+    }
+
+    .pk-action-reassign:hover {
+      background: rgba(239, 68, 68, .24)
+    }
+  </style>
+</head>
+
+<body>
+  <div class="loading" id="loading">
+    <div style="font-size:36px">💪</div>
+    <div style="font-size:20px;font-weight:700">FitCore GMS</div>
+    <div class="spinner"></div>
+    <div style="font-size:13px;color:var(--text-muted)">Connecting to MySQL database...</div>
+  </div>
+  <div class="mo open" id="auth-gate" style="display:none">
+    <div class="modal" style="max-width:440px">
+      <div class="mh" style="justify-content:center;flex-direction:column;align-items:center;padding-bottom:8px">
+        <div style="font-size:28px;margin-bottom:4px">💪</div>
+        <div class="mt" style="font-size:20px">FitCore GMS</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Sign in to your account</div>
+      </div>
+      <div class="mb" style="padding-top:8px">
+        <!-- Role selector cards -->
+        <div style="margin-bottom:18px">
+          <div
+            style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">
+            Select your role</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="role-cards">
+            <div class="role-card selected" data-role="admin" onclick="selectRole('admin')">
+              <div style="font-size:22px">🔑</div>
+              <div style="font-weight:700;font-size:13px;margin-top:4px">Admin</div>
+            </div>
+            <div class="role-card" data-role="trainer" onclick="selectRole('trainer')">
+              <div style="font-size:22px">🏋️</div>
+              <div style="font-weight:700;font-size:13px;margin-top:4px">Trainer</div>
+            </div>
+            <div class="role-card" data-role="user" onclick="selectRole('user')">
+              <div style="font-size:22px">👤</div>
+              <div style="font-weight:700;font-size:13px;margin-top:4px">Member</div>
+            </div>
+          </div>
+        </div>
+        <!-- Credentials -->
+        <div class="fg" style="grid-template-columns:1fr">
+          <div class="fgi">
+            <label>Username</label>
+            <input id="lg-user" placeholder="Enter your username" autocomplete="username">
+          </div>
+          <div class="fgi">
+            <label>Password</label>
+            <input id="lg-pass" type="password" placeholder="••••••••" autocomplete="current-password"
+              onkeydown="if(event.key==='Enter')doLogin()">
+          </div>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-s" onclick="clearLoginFields()">Clear</button>
+        <button class="btn btn-s" id="btn-register" style="display:none" onclick="openRegister()">Register</button>
+        <button class="btn btn-p" style="min-width:100px" onclick="doLogin()">Login →</button>
+      </div>
+    </div>
+  </div>
+  <div id="app-shell" style="display:none">
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">💪</div>
+        <div class="logo-text">Fit<span>Core</span></div>
+      </div>
+      <nav class="nav">
+        <div class="nav-label">Main</div><button class="nav-item active" id="nav-dashboard"
+          onclick="nav('dashboard')"><span class="ico">📊</span>Dashboard</button><button class="nav-item"
+          id="nav-myprofile" onclick="nav('myprofile')"><span class="ico">🙋</span>My Profile</button><button
+          class="nav-item" id="nav-members" onclick="nav('members')"><span class="ico">👥</span>Members</button><button
+          class="nav-item" id="nav-memberships" onclick="nav('memberships')"><span
+            class="ico">🎫</span>Memberships</button><button class="nav-item" id="nav-payments"
+          onclick="nav('payments')"><span class="ico">💳</span>Payments</button><button class="nav-item" id="nav-ai"
+          onclick="nav('ai')"><span class="ico">📊</span>Fitness Planner</button>
+        <div class="nav-label">Operations</div><button class="nav-item" id="nav-attendance"
+          onclick="nav('attendance')"><span class="ico">📋</span>Attendance</button><button class="nav-item"
+          id="nav-classes" onclick="nav('classes')"><span class="ico">🏋️</span>Classes</button><button class="nav-item"
+          id="nav-equipment" onclick="nav('equipment')"><span class="ico">🔧</span>Equipment</button>
+        <div class="nav-label" id="nav-label-admin">Admin</div><button class="nav-item" id="nav-staff"
+          onclick="nav('staff')"><span class="ico">👤</span>Staff</button><button class="nav-item" id="nav-plans"
+          onclick="nav('plans')"><span class="ico">📦</span>Plans &amp;
+          Pricing</button>
+      </nav>
+    </aside>
+    <div class="main">
+      <div class="topbar">
+        <div class="page-title" id="page-title">Dashboard</div>
+        <div class="topbar-right">
+          <div class="live-badge">
+            <div class="live-dot"></div><span id="role-badge">MySQL Live</span>
+          </div><button class="btn btn-s btn-sm" id="btn-logout" style="display:none" onclick="logout()">🚪
+            Logout</button>
+          <div class="avatar" id="avatar">AD</div>
+        </div>
+      </div>
+      <div class="content">
+        <div class="page active" id="page-dashboard">
+
+          <div id="dash-admin">
+            <!-- Admin announcement button -->
+            <div class="admin-only" style="margin-bottom:16px;display:flex;justify-content:flex-end">
+              <button class="btn btn-sm" onclick="openM('mo-announcement')"
+                style="background:rgba(249,115,22,.15);border:1px solid rgba(249,115,22,.3);color:var(--primary);font-weight:700">📢
+                Post Announcement</button>
+            </div>
+            <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+
+              <div class="stat-card c1">
+                <div class="stat-label">Total Staff</div>
+                <div class="stat-val" style="font-size:20px; line-height:1.3;">
+                  <span id="st-trainers">—</span> <span
+                    style="font-size:12px;color:var(--text-muted);font-weight:600">Trainers</span><br>
+                  <span id="st-cleaners">—</span> <span
+                    style="font-size:12px;color:var(--text-muted);font-weight:600">Cleaners</span><br>
+                  <span id="st-receptionists">—</span> <span
+                    style="font-size:12px;color:var(--text-muted);font-weight:600">Receptionists</span>
+                </div>
+                <div class="stat-sub">Staff by role</div>
+                <div class="stat-icon">👤</div>
+              </div>
+
+
+              <div class="stat-card c2">
+                <div class="stat-label">Total Gym Users</div>
+                <div class="stat-val" id="st-users">—</div>
+                <div class="stat-sub">Registered members</div>
+                <div class="stat-icon">👥</div>
+              </div>
+
+              <div class="stat-card c3">
+                <div class="stat-label">Monthly Revenue</div>
+                <div class="stat-val" id="st-rev">—</div>
+                <div class="stat-sub">This month</div>
+                <div class="stat-icon">💰</div>
+              </div>
+            </div>
+
+            <div class="g2">
+              <div class="panel">
+                <div class="pt">Weekly User Check-ins</div>
+                <div class="bar-chart" id="bar-chart"></div>
+                <div class="bar-lbs" id="bar-lbs"></div>
+              </div>
+
+              <div class="panel">
+                <div class="pt">Monthly Revenue (Last 6 Months)</div>
+                <div class="bar-chart" id="rev-chart"></div>
+                <div class="bar-lbs" id="rev-lbs"></div>
+                <div style="margin-top:10px">
+                  <div class="stat-label">This Month</div>
+                  <div class="rev-num" id="rev-total">$0</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:16px" class="g2">
+              <div class="panel">
+                <div class="pt">Revenue by Plan (This Month)</div>
+                <div id="plan-breakdown"></div>
+              </div>
+
+              <div class="panel">
+                <div class="pt">Recent Activity</div>
+                <div id="recent-act"></div>
+              </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!--  PEAK CAPACITY MONITOR (Admin Dashboard)                   -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <div style="margin-top:28px">
+
+              <!-- Header -->
+              <div
+                style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.3px">⚡ Peak Capacity
+                  </div>
+                  <div
+                    style="display:flex;align-items:center;gap:5px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:#22c55e;letter-spacing:.5px">
+                    <div class="pk-live-dot"></div>LIVE
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <select id="pk-day-select" onchange="pkRender()"
+                    style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;font-weight:700;cursor:pointer">
+                    <option>Monday</option>
+                    <option>Tuesday</option>
+                    <option>Wednesday</option>
+                    <option>Thursday</option>
+                    <option>Friday</option>
+                    <option>Saturday</option>
+                    <option>Sunday</option>
+                  </select>
+                  <button class="btn btn-s btn-sm" onclick="loadPeakDash()" style="font-size:12px">&#8635;
+                    Refresh</button>
+                  <span id="pk-last-refresh" style="font-size:11px;color:var(--text-muted)"></span>
+                </div>
+              </div>
+
+              <!-- 3 summary pills -->
+              <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+                <div
+                  style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-size:13px">
+                  <span style="font-size:16px">&#128197;</span>
+                  <span style="color:var(--text-muted)">Classes today</span>
+                  <span id="pks-total" style="font-weight:800;font-size:15px;color:var(--text)">-</span>
+                </div>
+                <div
+                  style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);font-size:13px">
+                  <span style="font-size:16px">&#128308;</span>
+                  <span style="color:var(--text-muted)">Full (100%)</span>
+                  <span id="pks-full" style="font-weight:800;font-size:15px;color:#ef4444">-</span>
+                </div>
+                <div
+                  style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.2);font-size:13px">
+                  <span style="font-size:16px">&#9888;&#65039;</span>
+                  <span style="color:var(--text-muted)">Near full (80%+)</span>
+                  <span id="pks-near" style="font-weight:800;font-size:15px;color:var(--primary)">-</span>
+                </div>
+              </div>
+
+              <!-- Class capacity list -->
+              <div class="panel">
+                <div id="pk-cap-list">
+                  <div class="empty">
+                    <div class="empty-ico">&#128197;</div>
+                    <p>Loading...</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+            <!-- /Peak Capacity Monitor -->
+
+          </div><!-- /dash-admin -->
+          <div id="dash-trainer" style="display:none">
+
+            <!-- ── Trainer sub-nav tabs ──────────────────────────────── -->
+            <div
+              style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0;flex-wrap:wrap">
+              <button id="tr-tab-btn-overview" class="btn btn-p btn-sm" onclick="switchTrainerTab('overview')"
+                style="border-radius:7px 7px 0 0;margin-bottom:-1px;border-bottom:3px solid var(--primary)">🏠
+                Overview</button>
+              <button id="tr-tab-btn-goals" class="btn btn-s btn-sm" onclick="switchTrainerTab('goals')"
+                style="border-radius:7px 7px 0 0;margin-bottom:-1px;border-bottom:3px solid transparent">🎯 Member
+                Goals</button>
+              <button id="tr-tab-btn-checkin" class="btn btn-s btn-sm" onclick="switchTrainerTab('checkin')"
+                style="border-radius:7px 7px 0 0;margin-bottom:-1px;border-bottom:3px solid transparent">✅ Quick
+                Check-In</button>
+              <button id="tr-tab-btn-roster" class="btn btn-s btn-sm" onclick="switchTrainerTab('roster')"
+                style="border-radius:7px 7px 0 0;margin-bottom:-1px;border-bottom:3px solid transparent">📋 Class
+                Roster</button>
+              <button id="tr-tab-btn-myshift" class="btn btn-s btn-sm" onclick="switchTrainerTab('myshift')"
+                style="border-radius:7px 7px 0 0;margin-bottom:-1px;border-bottom:3px solid transparent">🕐 My
+                Shifts</button>
+            </div>
+
+            <!-- ══ TAB: OVERVIEW ════════════════════════════════════════ -->
+            <div id="tr-tab-overview">
+
+              <!-- ── Stat strip ─────────────────────────────────────── -->
+              <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+                <div class="stat-card c1">
+                  <div class="stat-label">Assigned Members</div>
+                  <div class="stat-val" id="tr-members">—</div>
+                  <div class="stat-sub">Members assigned to you</div>
+                  <div class="stat-icon">👥</div>
+                </div>
+                <div class="stat-card c2">
+                  <div class="stat-label">Today's Check-ins</div>
+                  <div class="stat-val" id="tr-checkins">—</div>
+                  <div class="stat-sub">From your members today</div>
+                  <div class="stat-icon">✅</div>
+                </div>
+                <div class="stat-card c3">
+                  <div class="stat-label">My Classes Today</div>
+                  <div class="stat-val" id="tr-classes">—</div>
+                  <div class="stat-sub">Scheduled for today</div>
+                  <div class="stat-icon">🏋️</div>
+                </div>
+              </div>
+
+              <!-- ── Two column layout ──────────────────────────────── -->
+              <div class="g2" style="margin-bottom:20px">
+
+                <!-- Today's Schedule -->
+                <div class="panel">
+                  <div class="pt" style="display:flex;align-items:center;justify-content:space-between">
+                    <span>📅 Today's Schedule</span>
+                    <span id="tr-today-date" style="font-size:11px;font-weight:400;color:var(--text-muted)"></span>
+                  </div>
+                  <div id="tr-schedule">
+                    <div class="empty">
+                      <div class="empty-ico">📅</div>
+                      <p>Loading...</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Weekly check-in chart -->
+                <div class="panel">
+                  <div class="pt">📊 Weekly Check-ins (My Members)</div>
+                  <div class="bar-chart" id="bar-chart"></div>
+                  <div class="bar-lbs" id="bar-lbs"></div>
+                </div>
+
+              </div>
+
+              <!-- ── My Members full-width ──────────────────────────── -->
+              <div class="panel">
+                <div class="pt" style="display:flex;align-items:center;justify-content:space-between">
+                  <span>👥 My Members</span>
+                  <span id="tr-member-count" style="font-size:11px;font-weight:400;color:var(--text-muted)"></span>
+                </div>
+                <div id="tr-member-cards"
+                  style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+                  <div class="empty">
+                    <div class="empty-ico">👥</div>
+                    <p>Loading...</p>
+                  </div>
+                </div>
+              </div>
+
+            </div><!-- /tr-tab-overview -->
+
+            <!-- ══ TAB: MEMBER GOALS ════════════════════════════════════ -->
+            <div id="tr-tab-goals" style="display:none">
+              <div class="sec-header" style="margin-bottom:16px">
+                <div>
+                  <div style="font-size:16px;font-weight:700">🎯 Member Goals</div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:2px">View and update progress for your
+                    assigned members</div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <input id="tr-goal-search" class="srch-input" placeholder="Search members…"
+                    oninput="filterTrainerGoals()" style="width:200px">
+                  <select id="tr-goal-filter" class="flt" onchange="filterTrainerGoals()">
+                    <option value="">All Members</option>
+                    <option value="has_goal">Has Goal</option>
+                    <option value="no_goal">No Goal Set</option>
+                    <option value="achieved">Achieved</option>
+                    <option value="in_progress">In Progress</option>
+                  </select>
+                </div>
+              </div>
+              <div id="tr-goals-grid"
+                style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+                <div class="empty">
+                  <div class="empty-ico">🎯</div>
+                  <p>Loading goals…</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- ══ TAB: QUICK CHECK-IN ══════════════════════════════════ -->
+            <div id="tr-tab-checkin" style="display:none">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+                <!-- Log check-in panel -->
+                <div class="panel">
+                  <div class="pt">✅ Log a Check-In</div>
+                  <div style="display:flex;flex-direction:column;gap:12px">
+                    <div class="fgi">
+                      <label>Member</label>
+                      <select id="tr-ci-member" style="width:100%">
+                        <option value="">— Select member —</option>
+                      </select>
+                    </div>
+                    <div class="fg">
+                      <div class="fgi">
+                        <label>Check-In Time</label>
+                        <input type="datetime-local" id="tr-ci-in">
+                      </div>
+                      <div class="fgi">
+                        <label>Check-Out Time <span
+                            style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
+                        <input type="datetime-local" id="tr-ci-out">
+                      </div>
+                    </div>
+                    <div class="fgi">
+                      <label>Notes <span style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
+                      <input type="text" id="tr-ci-notes" placeholder="e.g. Late arrival, injury note…">
+                    </div>
+                    <button class="btn btn-p" onclick="trainerCheckIn()" style="width:100%">✅ Log Check-In</button>
+                  </div>
+                </div>
+
+                <!-- Today's check-ins live feed -->
+                <div class="panel">
+                  <div class="pt" style="display:flex;align-items:center;justify-content:space-between">
+                    <span>📋 Today's Check-Ins</span>
+                    <button class="btn btn-s btn-sm" onclick="loadTrainerCheckins()">🔄 Refresh</button>
+                  </div>
+                  <div id="tr-today-checkins">
+                    <div class="empty">
+                      <div class="empty-ico">📋</div>
+                      <p>Loading…</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Recent attendance table -->
+              <div class="panel" style="margin-top:16px">
+                <div class="pt"
+                  style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                  <span>🗓 Recent Attendance (My Members)</span>
+                  <input id="tr-att-search" class="srch-input" placeholder="Search…" oninput="filterTrainerAtt()"
+                    style="width:200px">
+                </div>
+                <div class="tbl-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Member</th>
+                        <th>Check-In</th>
+                        <th>Check-Out</th>
+                        <th>Duration</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tr-att-table">
+                      <tr>
+                        <td colspan="5">
+                          <div class="empty">
+                            <div class="empty-ico">📋</div>
+                            <p>Loading…</p>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- ══ TAB: CLASS ROSTER ═════════════════════════════════════ -->
+            <div id="tr-tab-roster" style="display:none">
+              <div class="sec-header" style="margin-bottom:16px">
+                <div>
+                  <div style="font-size:16px;font-weight:700">📋 Class Roster</div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Members enrolled in your classes
+                  </div>
+                </div>
+                <select id="tr-roster-class" class="flt" onchange="loadClassRoster()" style="min-width:200px">
+                  <option value="">— Select a class —</option>
+                </select>
+              </div>
+
+              <!-- Selected class info card -->
+              <div id="tr-roster-class-info" style="display:none;margin-bottom:16px"></div>
+
+              <!-- Roster members grid -->
+              <div id="tr-roster-grid"
+                style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">
+                <div class="empty">
+                  <div class="empty-ico">📋</div>
+                  <p>Select a class above to view its roster</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- ══ TAB: MY SHIFTS ════════════════════════════════════════ -->
+            <div id="tr-tab-myshift" style="display:none">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+                <!-- Clock-in panel -->
+                <div class="panel">
+                  <div class="pt">🕐 Shift Clock-In / Out</div>
+                  <div id="tr-shift-status"
+                    style="margin-bottom:16px;padding:12px;border-radius:10px;background:var(--surface2);border:1px solid var(--border)">
+                    <div style="font-size:12px;color:var(--text-muted)">Current Status</div>
+                    <div id="tr-shift-status-text" style="font-size:18px;font-weight:700;margin-top:4px">Loading…</div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:10px">
+                    <div class="fgi">
+                      <label>Clock-In Time</label>
+                      <input type="datetime-local" id="tr-shift-in">
+                    </div>
+                    <div class="fgi">
+                      <label>Clock-Out Time <span style="font-weight:400;color:var(--text-muted)">(leave blank if
+                          clocking in now)</span></label>
+                      <input type="datetime-local" id="tr-shift-out">
+                    </div>
+                    <div class="fgi">
+                      <label>Notes <span style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
+                      <input type="text" id="tr-shift-notes" placeholder="e.g. Substitute for Mike…">
+                    </div>
+                    <div style="display:flex;gap:8px">
+                      <button class="btn btn-p" id="tr-shift-clockin-btn" onclick="trainerClockIn()" style="flex:1">🟢
+                        Clock In</button>
+                      <button class="btn btn-d" id="tr-shift-clockout-btn" onclick="trainerClockOut()" style="flex:1"
+                        disabled>🔴 Clock Out</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Stats for current month -->
+                <div class="panel">
+                  <div class="pt">📊 This Month's Hours</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+                    <div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center">
+                      <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">Total Hours</div>
+                      <div id="tr-shift-hours"
+                        style="font-size:28px;font-weight:800;color:var(--primary);margin-top:4px">—</div>
+                    </div>
+                    <div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center">
+                      <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">Sessions</div>
+                      <div id="tr-shift-sessions"
+                        style="font-size:28px;font-weight:800;color:var(--success);margin-top:4px">—</div>
+                    </div>
+                  </div>
+                  <div
+                    style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px">
+                    Schedule</div>
+                  <div id="tr-shift-schedule-text"
+                    style="font-size:13px;color:var(--text);padding:10px;background:var(--surface2);border-radius:8px">—
+                  </div>
+                </div>
+              </div>
+
+              <!-- Shift history table -->
+              <div class="panel" style="margin-top:16px">
+                <div class="pt"
+                  style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                  <span>🗓 Shift History</span>
+                  <button class="btn btn-s btn-sm" onclick="loadTrainerShifts()">🔄 Refresh</button>
+                </div>
+                <div class="tbl-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Clock-In</th>
+                        <th>Clock-Out</th>
+                        <th>Duration</th>
+                        <th>Notes</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tr-shift-table">
+                      <tr>
+                        <td colspan="6">
+                          <div class="empty">
+                            <div class="empty-ico">🕐</div>
+                            <p>Loading…</p>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /dash-trainer -->
+
+          <!-- ══════════════════════════════════════════════════════════ -->
+          <!--  USER DASHBOARD                                            -->
+          <!-- ══════════════════════════════════════════════════════════ -->
+          <div id="dash-user" style="display:none">
+
+            <!-- Motivational Quote Banner -->
+            <div id="du-quote-banner"
+              style="margin-bottom:20px;padding:16px 22px;border-radius:14px;background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.08));border:1px solid rgba(99,102,241,.2);display:flex;align-items:center;gap:16px">
+              <div style="font-size:28px;flex-shrink:0">💬</div>
+              <div style="flex:1">
+                <div id="du-quote-text"
+                  style="font-size:14px;font-style:italic;color:var(--text);line-height:1.6;font-weight:500">Loading
+                  quote...</div>
+                <div id="du-quote-author" style="font-size:11px;color:var(--text-muted);margin-top:4px"></div>
+              </div>
+              <button onclick="loadDailyQuote()" title="New quote"
+                style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted);padding:4px;flex-shrink:0">🔄</button>
+            </div>
+
+            <!-- My Membership Card -->
+            <div class="panel"
+              style="margin-bottom:20px;background:linear-gradient(135deg,var(--primary),#8b5cf6);color:#fff;border:none">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                <div>
+                  <div style="font-size:13px;opacity:0.9;margin-bottom:4px">My Membership</div>
+                  <div style="font-size:22px;font-weight:700" id="du-plan-name">—</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-size:11px;opacity:0.8">Status</div>
+                  <div id="du-status-badge" style="margin-top:4px">—</div>
+                </div>
+              </div>
+              <div
+                style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.2)">
+                <div>
+                  <div style="font-size:11px;opacity:0.8">Expires</div>
+                  <div style="font-size:14px;font-weight:700;margin-top:2px" id="du-expires">—</div>
+                </div>
+                <div>
+                  <div style="font-size:11px;opacity:0.8">Days Left</div>
+                  <div style="font-size:14px;font-weight:700;margin-top:2px" id="du-days-left">—</div>
+                </div>
+                <div>
+                  <div style="font-size:11px;opacity:0.8">Member Since</div>
+                  <div style="font-size:14px;font-weight:700;margin-top:2px" id="du-since">—</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Stats Grid: 4 cards -->
+            <div class="stats-grid" style="margin-bottom:20px">
+              <div class="stat-card c1">
+                <div class="stat-label">Check-ins This Month</div>
+                <div class="stat-val" id="du-checkins-month">—</div>
+                <div class="stat-sub">Visits this month</div>
+                <div class="stat-icon">✅</div>
+              </div>
+              <div class="stat-card c2">
+                <div class="stat-label">Current Streak</div>
+                <div class="stat-val" id="du-streak">—</div>
+                <div class="stat-sub">Consecutive days</div>
+                <div class="stat-icon">🔥</div>
+              </div>
+              <div class="stat-card c3">
+                <div class="stat-label">Total Check-ins</div>
+                <div class="stat-val" id="du-checkins-total">—</div>
+                <div class="stat-sub">All-time visits</div>
+                <div class="stat-icon">📊</div>
+              </div>
+              <div class="stat-card c4">
+                <div class="stat-label">Total Workout Time</div>
+                <div class="stat-val" id="du-workout-time">—</div>
+                <div class="stat-sub">Hours trained</div>
+                <div class="stat-icon">⏱️</div>
+              </div>
+            </div>
+
+            <!-- Quick Links -->
+            <div class="panel" style="margin-bottom:20px">
+              <div class="pt" style="margin-bottom:14px">⚡ Quick Actions</div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px" id="du-shortcuts">
+                <button onclick="nav('ai')" class="du-shortcut"
+                  style="background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(99,102,241,.04));border:1px solid rgba(99,102,241,.25);border-radius:12px;padding:16px 10px;cursor:pointer;text-align:center;transition:all .2s">
+                  <div style="font-size:26px;margin-bottom:6px">🤖</div>
+                  <div style="font-size:12px;font-weight:700;color:var(--text)">Recommendation</div>
+                  <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Get your plan</div>
+                </button>
+                <button onclick="nav('payments')" class="du-shortcut"
+                  style="background:linear-gradient(135deg,rgba(34,197,94,.12),rgba(34,197,94,.04));border:1px solid rgba(34,197,94,.25);border-radius:12px;padding:16px 10px;cursor:pointer;text-align:center;transition:all .2s">
+                  <div style="font-size:26px;margin-bottom:6px">💳</div>
+                  <div style="font-size:12px;font-weight:700;color:var(--text)">Payments</div>
+                  <div style="font-size:10px;color:var(--text-muted);margin-top:2px">View & pay</div>
+                </button>
+                <button onclick="nav('attendance')" class="du-shortcut"
+                  style="background:linear-gradient(135deg,rgba(6,182,212,.12),rgba(6,182,212,.04));border:1px solid rgba(6,182,212,.25);border-radius:12px;padding:16px 10px;cursor:pointer;text-align:center;transition:all .2s">
+                  <div style="font-size:26px;margin-bottom:6px">📋</div>
+                  <div style="font-size:12px;font-weight:700;color:var(--text)">Attendance</div>
+                  <div style="font-size:10px;color:var(--text-muted);margin-top:2px">My check-ins</div>
+                </button>
+                <button onclick="nav('myprofile')" class="du-shortcut"
+                  style="background:linear-gradient(135deg,rgba(249,115,22,.12),rgba(249,115,22,.04));border:1px solid rgba(249,115,22,.25);border-radius:12px;padding:16px 10px;cursor:pointer;text-align:center;transition:all .2s">
+                  <div style="font-size:26px;margin-bottom:6px">👤</div>
+                  <div style="font-size:12px;font-weight:700;color:var(--text)">My Profile</div>
+                  <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Edit details</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- ROW: Recent Check-ins + Goal Progress Tracker -->
+            <div class="g2">
+              <!-- Recent Check-ins -->
+              <div class="panel">
+                <div class="pt">📋 My Recent Check-ins</div>
+                <div id="du-recent-checkins">
+                  <div class="empty">
+                    <div class="empty-ico">📋</div>
+                    <p>No check-ins yet</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Goal Progress Tracker -->
+              <div class="panel">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                  <div class="pt" style="margin-bottom:0">🎯 Goal Progress</div>
+                  <button class="btn btn-s btn-sm" onclick="openGoalModal()">✏️ Set Goal</button>
+                </div>
+                <div id="du-goal-content">
+                  <div class="empty">
+                    <div class="empty-ico">🎯</div>
+                    <p>No goal set yet. Click <b>Set Goal</b> to get started.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ROW: Expiry Countdown + Weekly Attendance Chart -->
+            <div class="g2" style="margin-top:20px">
+              <div class="panel" id="du-expiry-panel">
+                <div class="pt">⏳ Membership Countdown</div>
+                <div id="du-expiry-content">
+                  <div class="empty">
+                    <div class="empty-ico">🎫</div>
+                    <p>No active membership.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="pt">📊 My Attendance This Week</div>
+                <div id="du-week-chart" style="margin-top:8px">
+                  <div class="bar-chart" id="du-bar-chart"></div>
+                  <div class="bar-lbs" id="du-bar-lbs"></div>
+                  <div id="du-week-summary"
+                    style="margin-top:10px;font-size:12px;color:var(--text-muted);text-align:center"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ROW: Upcoming Classes + AI Snapshot -->
+            <div class="g2" style="margin-top:20px">
+              <div class="panel">
+                <div class="pt">🗓️ Upcoming Classes This Week</div>
+                <div id="du-upcoming-classes">
+                  <div class="empty">
+                    <div class="empty-ico">🗓️</div>
+                    <p>No classes scheduled.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="pt">📊 Latest Fitness Plan</div>
+                <div id="du-ai-snapshot">
+                  <div class="empty">
+                    <div class="empty-ico">✨</div>
+                    <p>No prediction yet. Try the AI page!</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+        <div class="page" id="page-myprofile">
+
+          <!-- Profile Header with Avatar -->
+          <div class="panel" style="margin-bottom:20px">
+            <div style="display:flex;align-items:center;gap:20px">
+              <div style="position:relative">
+                <div id="up-avatar"
+                  style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;font-weight:700">
+                  —</div>
+                <button class="btn btn-sm btn-p" onclick="changeAvatar()"
+                  style="position:absolute;bottom:-4px;right:-4px;width:28px;height:28px;border-radius:50%;padding:0;font-size:14px"
+                  title="Change Avatar">📷</button>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:20px;font-weight:700;margin-bottom:4px" id="up-fullname">—</div>
+                <div style="font-size:13px;color:var(--text-muted)" id="up-email-display">—</div>
+                <div style="margin-top:6px">
+                  <span class="badge active" style="font-size:11px" id="up-status-badge">ACTIVE</span>
+                </div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:11px;color:var(--text-muted)">Member Since</div>
+                <div style="font-size:14px;font-weight:700" id="up-member-since">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div style="display:flex;gap:6px;margin-bottom:20px;border-bottom:2px solid var(--border)">
+            <button class="btn btn-p" id="profile-tab-info" onclick="switchProfileTab('info')"
+              style="border-radius:8px 8px 0 0;border-bottom:3px solid var(--primary)">📝 Personal Info</button>
+            <button class="btn btn-s" id="profile-tab-payments" onclick="switchProfileTab('payments')"
+              style="border-radius:8px 8px 0 0;border-bottom:3px solid transparent">💳 Payment History</button>
+            <button class="btn btn-s" id="profile-tab-security" onclick="switchProfileTab('security')"
+              style="border-radius:8px 8px 0 0;border-bottom:3px solid transparent">🔒 Security</button>
+            <button class="btn btn-s" id="profile-tab-progress" onclick="switchProfileTab('progress')"
+              style="border-radius:8px 8px 0 0;border-bottom:3px solid transparent">🏃 My Progress</button>
+          </div>
+
+          <!-- Tab: Personal Info -->
+          <div id="profile-panel-info">
+            <div class="g2">
+              <div class="panel">
+                <div class="pt">Basic Information</div>
+                <div class="fg">
+                  <div class="fgi"><label>First Name</label><input id="up-fn" disabled style="opacity:0.7"></div>
+                  <div class="fgi"><label>Last Name</label><input id="up-ln" disabled style="opacity:0.7"></div>
+                  <div class="fgi full"><label>Email</label><input id="up-em" disabled style="opacity:0.7"></div>
+                  <div class="fgi"><label>Phone</label><input id="up-ph" placeholder="+94 77 456 4910"></div>
+                  <div class="fgi"><label>Date of Birth</label><input id="up-dob" type="date"></div>
+                  <div class="fgi"><label>Gender</label>
+                    <select id="up-gen">
+                      <option>Male</option>
+                      <option>Female</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="pt">Additional Details</div>
+                <div class="fg">
+                  <div class="fgi full"><label>Address</label><input id="up-addr"
+                      placeholder="123 Main St, City, State"></div>
+                  <div class="fgi full"><label>Emergency Contact</label><input id="up-ec"
+                      placeholder="Name & Phone Number"></div>
+                  <div class="fgi full"><label>Medical Notes</label><textarea id="up-med"
+                      placeholder="Allergies, conditions, medications..."
+                      style="min-height:80px;resize:vertical;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:inherit"></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end">
+              <button class="btn btn-s" onclick="loadMyProfile()">Reset</button>
+              <button class="btn btn-p" onclick="saveMyProfile()">💾 Save Changes</button>
+            </div>
+          </div>
+
+          <!-- Tab: Payment History -->
+          <div id="profile-panel-payments" style="display:none">
+            <div class="panel">
+              <div class="pt">All Payments</div>
+              <div id="up-payment-history">
+                <div class="empty">
+                  <div class="empty-ico">💳</div>
+                  <p>Loading...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: My Progress -->
+          <div id="profile-panel-progress" style="display:none">
+
+            <!-- ── Activity Rings Row ─────────────────────────────── -->
+            <div class="panel" style="margin-bottom:20px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+                <div class="pt" style="margin-bottom:0">🏅 Today's Activity</div>
+                <div style="font-size:12px;color:var(--text-muted)" id="prog-date-label">—</div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-around;flex-wrap:wrap;gap:24px">
+                <!-- Ring: Classes Attended -->
+                <div class="prog-ring-wrap" style="text-align:center">
+                  <svg width="110" height="110" viewBox="0 0 110 110" style="transform:rotate(-90deg)">
+                    <circle cx="55" cy="55" r="46" fill="none" stroke="rgba(249,115,22,0.12)" stroke-width="10" />
+                    <circle id="ring-classes" cx="55" cy="55" r="46" fill="none" stroke="#f97316" stroke-width="10"
+                      stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289"
+                      style="transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)" />
+                  </svg>
+                  <div id="ring-classes-label" style="font-size:22px;font-weight:800;margin-top:4px">0</div>
+                  <div style="font-size:11px;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase">
+                    Classes</div>
+                  <div style="font-size:10px;color:var(--text-muted)" id="ring-classes-goal">Goal: —</div>
+                </div>
+                <!-- Ring: Workout Duration -->
+                <div class="prog-ring-wrap" style="text-align:center">
+                  <svg width="110" height="110" viewBox="0 0 110 110" style="transform:rotate(-90deg)">
+                    <circle cx="55" cy="55" r="46" fill="none" stroke="rgba(34,197,94,0.12)" stroke-width="10" />
+                    <circle id="ring-duration" cx="55" cy="55" r="46" fill="none" stroke="#22c55e" stroke-width="10"
+                      stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289"
+                      style="transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)" />
+                  </svg>
+                  <div id="ring-duration-label" style="font-size:22px;font-weight:800;margin-top:4px">0<span
+                      style="font-size:13px;font-weight:500">m</span></div>
+                  <div style="font-size:11px;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase">
+                    Duration</div>
+                  <div style="font-size:10px;color:var(--text-muted)" id="ring-duration-goal">Goal: 60m</div>
+                </div>
+                <!-- Ring: Calories Burned -->
+                <div class="prog-ring-wrap" style="text-align:center">
+                  <svg width="110" height="110" viewBox="0 0 110 110" style="transform:rotate(-90deg)">
+                    <circle cx="55" cy="55" r="46" fill="none" stroke="rgba(239,68,68,0.12)" stroke-width="10" />
+                    <circle id="ring-calories" cx="55" cy="55" r="46" fill="none" stroke="#ef4444" stroke-width="10"
+                      stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289"
+                      style="transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)" />
+                  </svg>
+                  <div id="ring-calories-label" style="font-size:22px;font-weight:800;margin-top:4px">0<span
+                      style="font-size:13px;font-weight:500">kcal</span></div>
+                  <div style="font-size:11px;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase">
+                    Calories</div>
+                  <div style="font-size:10px;color:var(--text-muted)" id="ring-calories-goal">Goal: 500kcal</div>
+                </div>
+                <!-- Ring: Attendance (check-ins this month) -->
+                <div class="prog-ring-wrap" style="text-align:center">
+                  <svg width="110" height="110" viewBox="0 0 110 110" style="transform:rotate(-90deg)">
+                    <circle cx="55" cy="55" r="46" fill="none" stroke="rgba(59,130,246,0.12)" stroke-width="10" />
+                    <circle id="ring-attendance" cx="55" cy="55" r="46" fill="none" stroke="#3b82f6" stroke-width="10"
+                      stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289"
+                      style="transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)" />
+                  </svg>
+                  <div id="ring-attendance-label" style="font-size:22px;font-weight:800;margin-top:4px">0</div>
+                  <div style="font-size:11px;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase">
+                    Check-ins</div>
+                  <div style="font-size:10px;color:var(--text-muted)" id="ring-attendance-goal">This month</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── Streak & Quick Stats ───────────────────────────── -->
+            <div class="g2" style="margin-bottom:20px">
+              <!-- Streak Card -->
+              <div class="panel"
+                style="background:linear-gradient(135deg,rgba(249,115,22,.08),rgba(249,115,22,.02));border-color:rgba(249,115,22,.2)">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                  <div class="pt" style="margin-bottom:0">🔥 Workout Streak</div>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:16px">
+                  <div>
+                    <div style="font-size:52px;font-weight:900;line-height:1;color:var(--primary)" id="streak-val">0
+                    </div>
+                    <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Current Streak (days)</div>
+                  </div>
+                  <div style="padding-bottom:8px">
+                    <div style="font-size:13px;font-weight:700" id="streak-best">Best: 0</div>
+                    <div style="font-size:12px;color:var(--text-muted)" id="streak-last">Last visit: —</div>
+                  </div>
+                </div>
+                <!-- Mini streak dots (last 7 days) -->
+                <div style="display:flex;gap:6px;margin-top:16px" id="streak-dots"></div>
+                <div style="display:flex;gap:6px;margin-top:4px" id="streak-dot-labels"></div>
+              </div>
+
+              <!-- Monthly Summary -->
+              <div class="panel">
+                <div class="pt">📅 Monthly Summary</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="monthly-summary-grid">
+                  <div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center">
+                    <div style="font-size:24px;font-weight:800;color:var(--primary)" id="ms-visits">—</div>
+                    <div style="font-size:11px;color:var(--text-muted)">Gym Visits</div>
+                  </div>
+                  <div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center">
+                    <div style="font-size:24px;font-weight:800;color:var(--success)" id="ms-hours">—</div>
+                    <div style="font-size:11px;color:var(--text-muted)">Hours Trained</div>
+                  </div>
+                  <div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center">
+                    <div style="font-size:24px;font-weight:800;color:var(--info)" id="ms-classes">—</div>
+                    <div style="font-size:11px;color:var(--text-muted)">Classes</div>
+                  </div>
+                  <div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center">
+                    <div style="font-size:24px;font-weight:800;color:var(--warning)" id="ms-calories">—</div>
+                    <div style="font-size:11px;color:var(--text-muted)">Est. Calories</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── Weekly Attendance Chart ────────────────────────── -->
+            <div class="panel" style="margin-bottom:20px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                <div class="pt" style="margin-bottom:0">📊 Weekly Attendance</div>
+                <select id="prog-week-select" class="flt" onchange="loadProgressData()" style="font-size:12px">
+                  <option value="0">This week</option>
+                  <option value="1">Last week</option>
+                  <option value="2">2 weeks ago</option>
+                  <option value="3">3 weeks ago</option>
+                </select>
+              </div>
+              <div style="display:flex;align-items:flex-end;gap:8px;height:90px" id="weekly-bars"></div>
+              <div style="display:flex;gap:8px;margin-top:6px" id="weekly-bar-labels"></div>
+            </div>
+
+            <!-- ── Weight / Body Progress ─────────────────────────── -->
+            <div class="panel" style="margin-bottom:20px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                <div class="pt" style="margin-bottom:0">⚖️ Weight & Body Progress</div>
+                <button class="btn btn-sm btn-p" onclick="openProgressLog()">+ Log Weight</button>
+              </div>
+              <div id="weight-chart-wrap">
+                <div class="empty">
+                  <div class="empty-ico">⚖️</div>
+                  <p>No weight logs yet. Click <b>+ Log Weight</b> to start.</p>
+                </div>
+              </div>
+
+              <!-- Goal Progress Bar -->
+              <div id="weight-goal-section" style="margin-top:16px;display:none">
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                  <span style="font-size:12px;font-weight:600;color:var(--text-muted)">GOAL PROGRESS</span>
+                  <span style="font-size:12px;font-weight:700" id="weight-goal-pct">0%</span>
+                </div>
+                <div class="pb">
+                  <div class="pf" id="weight-goal-bar" style="background:var(--primary);width:0%"></div>
+                </div>
+                <div
+                  style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-muted)">
+                  <span id="weight-goal-start">Start: —</span>
+                  <span id="weight-goal-current">Current: —</span>
+                  <span id="weight-goal-target">Target: —</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ── Attendance Calendar ────────────────────────────── -->
+            <div class="panel">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                <div class="pt" style="margin-bottom:0">🗓 Attendance History</div>
+                <div style="font-size:13px;color:var(--text-muted)" id="cal-month-label">—</div>
+              </div>
+              <!-- 7-col weekday headers -->
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">
+                <div style="text-align:center;font-size:10px;color:var(--text-muted)">Sun</div>
+                <div style="text-align:center;font-size:10px;color:var(--text-muted)">Mon</div>
+                <div style="text-align:center;font-size:10px;color:var(--text-muted)">Tue</div>
+                <div style="text-align:center;font-size:10px;color:var(--text-muted)">Wed</div>
+                <div style="text-align:center;font-size:10px;color:var(--text-muted)">Thu</div>
+                <div style="text-align:center;font-size:10px;color:var(--text-muted)">Fri</div>
+                <div style="text-align:center;font-size:10px;color:var(--text-muted)">Sat</div>
+              </div>
+              <div id="attendance-calendar" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px"></div>
+              <div
+                style="display:flex;align-items:center;gap:16px;margin-top:12px;font-size:11px;color:var(--text-muted)">
+                <span>Legend:</span>
+                <span><span
+                    style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--primary);vertical-align:middle;margin-right:4px"></span>Attended</span>
+                <span><span
+                    style="display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);vertical-align:middle;margin-right:4px"></span>No
+                  visit</span>
+                <span><span
+                    style="display:inline-block;width:12px;height:12px;border-radius:3px;background:rgba(249,115,22,.2);border:1px solid rgba(249,115,22,.4);vertical-align:middle;margin-right:4px"></span>Today</span>
+              </div>
+            </div>
+
+          </div><!-- /#profile-panel-progress -->
+
+          <!-- Weight Log Modal -->
+          <div class="mo" id="mo-log-weight">
+            <div class="modal" style="max-width:380px">
+              <div class="mh">
+                <div class="mt">⚖️ Log Weight</div><button class="mc" onclick="closeM('mo-log-weight')">✕</button>
+              </div>
+              <div class="mb">
+                <div class="fg">
+                  <div class="fgi full">
+                    <label>Current Weight (kg)</label>
+                    <input id="wl-weight" type="number" step="0.1" placeholder="e.g. 75.5">
+                  </div>
+                  <div class="fgi full">
+                    <label>Date</label>
+                    <input id="wl-date" type="date">
+                  </div>
+                  <div class="fgi full">
+                    <label>Target Weight (kg) — optional</label>
+                    <input id="wl-target" type="number" step="0.1" placeholder="e.g. 70.0">
+                  </div>
+                  <div class="fgi full">
+                    <label>Notes</label>
+                    <input id="wl-notes" placeholder="How are you feeling?">
+                  </div>
+                </div>
+              </div>
+              <div class="mf">
+                <button class="btn btn-s" onclick="closeM('mo-log-weight')">Cancel</button>
+                <button class="btn btn-p" onclick="saveWeightLog()">💾 Save Log</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: Security -->
+          <div id="profile-panel-security" style="display:none">
+            <div class="g2">
+              <div class="panel">
+                <div class="pt">Change Password</div>
+                <div class="fg">
+                  <div class="fgi full"><label>Current Password</label><input id="up-curr-pw" type="password"
+                      placeholder="Enter current password"></div>
+                  <div class="fgi full"><label>New Password</label><input id="up-new-pw" type="password"
+                      placeholder="Min 6 characters"></div>
+                  <div class="fgi full"><label>Confirm New Password</label><input id="up-confirm-pw" type="password"
+                      placeholder="Re-enter new password"></div>
+                </div>
+                <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end">
+                  <button class="btn btn-s" onclick="clearPasswordFields()">Clear</button>
+                  <button class="btn btn-p" onclick="changePassword()">🔒 Change Password</button>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="pt">Account Information</div>
+                <div style="padding:14px 0">
+                  <div
+                    style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+                    <span style="color:var(--text-muted)">Username</span>
+                    <span style="font-weight:700" id="up-username">—</span>
+                  </div>
+                  <div
+                    style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+                    <span style="color:var(--text-muted)">Account Created</span>
+                    <span style="font-weight:700" id="up-account-created">—</span>
+                  </div>
+                  <div
+                    style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+                    <span style="color:var(--text-muted)">Role</span>
+                    <span style="font-weight:700">Member</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;padding:10px 0">
+                    <span style="color:var(--text-muted)">Member ID</span>
+                    <span style="font-weight:700;font-family:monospace" id="up-member-id">—</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="page" id="page-members">
+
+          <!-- ADMIN / USER VIEW -->
+          <div id="members-admin-view">
+            <div class="sec-header">
+              <div></div><button class="btn btn-p admin-only" onclick="openM('mo-member')">➕ Add Member</button>
+            </div>
+            <div class="tbl-wrap">
+              <div class="srch-bar">
+                <input class="srch-input" placeholder="🔍 Search members..." id="srch-member" oninput="filterMembers()">
+                <select class="flt" id="flt-mstatus" onchange="filterMembers()">
+                  <option value="">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="expired">Expired</option>
+                  <option value="paused">Paused</option>
+                </select>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Member</th>
+                    <th>Username</th>
+                    <th>Plan</th>
+                    <th>Trainer</th>
+                    <th>Phone</th>
+                    <th>Joined</th>
+                    <th>Expires</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="tbl-members"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TRAINER COACHING DASHBOARD -->
+          <div id="members-trainer-view" style="display:none">
+            <div class="sec-header" style="margin-bottom:16px">
+              <div>
+                <div style="font-size:16px;font-weight:700">👥 My Members — Coaching Dashboard</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Attendance streaks, goals, health
+                  flags &amp; your notes</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input class="srch-input" placeholder="🔍 Search..." id="tr-members-search"
+                  oninput="filterTrainerMembers()" style="width:200px">
+                <select class="flt" id="tr-members-status" onchange="filterTrainerMembers()">
+                  <option value="">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="expired">Expired</option>
+                  <option value="paused">Paused</option>
+                </select>
+              </div>
+            </div>
+            <div id="tr-coaching-strip"
+              style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px"></div>
+            <div id="tr-coaching-cards"
+              style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px">
+              <div class="empty">
+                <div class="empty-ico">👥</div>
+                <p>Loading members…</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Trainer Notes Modal -->
+        <div class="mo" id="mo-trainer-notes">
+          <div class="modal" style="max-width:480px">
+            <div class="mh">
+              <div class="mt">📝 Coaching Notes</div>
+              <button class="mc" onclick="closeM('mo-trainer-notes')">✕</button>
+            </div>
+            <div class="mb">
+              <input type="hidden" id="tn-member-id">
+              <div style="font-size:14px;font-weight:700;margin-bottom:12px" id="tn-member-name"></div>
+              <div class="fgi">
+                <label>Notes (visible to trainer only)</label>
+                <textarea id="tn-notes"
+                  placeholder="e.g. Improved squat form. Struggling with consistency. Target: bench 80kg by March…"
+                  style="min-height:120px;resize:vertical;width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px"></textarea>
+              </div>
+              <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">Last updated: <span
+                  id="tn-updated">—</span></div>
+            </div>
+            <div class="mf">
+              <button class="btn btn-s" onclick="closeM('mo-trainer-notes')">Cancel</button>
+              <button class="btn btn-p" onclick="saveTrainerNotes()">💾 Save Notes</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Assign Trainer to Member Modal (Admin only) -->
+        <div class="mo" id="mo-assign-member-trainer">
+          <div class="modal" style="max-width:440px">
+            <div class="mh">
+              <div class="mt">🏋️ Assign Trainer</div>
+              <button class="mc" onclick="closeM('mo-assign-member-trainer')">✕</button>
+            </div>
+            <div class="mb">
+              <input type="hidden" id="amt-member-id">
+              <div style="font-size:14px;font-weight:700;margin-bottom:14px" id="amt-member-name"></div>
+              <div class="fgi">
+                <label>Select Trainer</label>
+                <select id="amt-trainer-sel" style="width:100%">
+                  <option value="">— No Trainer (Unassign) —</option>
+                </select>
+              </div>
+            </div>
+            <div class="mf">
+              <button class="btn btn-s" onclick="closeM('mo-assign-member-trainer')">Cancel</button>
+              <button class="btn btn-p" onclick="saveAssignMemberTrainer()">💾 Save Assignment</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="page" id="page-memberships">
+          <div class="sec-header">
+            <div></div><button class="btn btn-p" onclick="openM('mo-membership')">➕ New Membership</button>
+          </div>
+          <div class="tbl-wrap">
+            <div class="srch-bar"><input class="srch-input" placeholder="🔍 Search..." id="srch-ms"
+                oninput="filterMS()"></div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Plan</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tbl-ms"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="page" id="page-payments">
+          <div class="sec-header">
+            <div></div><button class="btn btn-p admin-only" onclick="openM('mo-payment')">➕ Record
+              Payment</button><button class="btn btn-p user-only" onclick="openM('mo-user-payment')">💳 Pay with Credit
+              Card</button>
+          </div>
+          <div class="tbl-wrap">
+            <div class="srch-bar"><input class="srch-input" placeholder="🔍 Search..." id="srch-pay"
+                oninput="filterPay()"><select class="flt" id="flt-method" onchange="filterPay()">
+                <option value="">All Methods</option>
+                <option value="cash">Cash</option>
+                <option value="card">Card</option>
+                <option value="transfer">Transfer</option>
+                <option value="credit_card">Credit Card</option>
+              </select></div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Amount</th>
+                  <th>Method</th>
+                  <th>Plan</th>
+                  <th>Date</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody id="tbl-pay"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="page" id="page-ai">
+          <div class="sec-header">
+            <div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Personalized plan, schedule, workout
+                &amp; diet tips based on your fitness profile.</div>
+            </div>
+            <button class="btn btn-s btn-sm" onclick="fillAIDemo()">🎲 Demo Values</button>
+          </div>
+
+          <!-- Input + Result row -->
+          <div class="g2" style="align-items:start">
+
+            <!-- LEFT: Input Form -->
+            <div class="panel">
+              <div class="pt">🧬 Your Fitness Profile</div>
+              <div class="fg" style="margin-top:8px">
+
+                <div class="fgi">
+                  <label>Goal</label>
+                  <select id="ai-goal">
+                    <option value="lose">🔥 Lose Weight</option>
+                    <option value="muscle">💪 Gain Muscle</option>
+                    <option value="endurance">🏃 Endurance &amp; Cardio</option>
+                    <option value="flexibility">🧘 Flexibility &amp; Yoga</option>
+                    <option value="fit">⚖️ General Fitness</option>
+                  </select>
+                </div>
+
+                <div class="fgi">
+                  <label>Experience Level</label>
+                  <select id="ai-exp">
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                </div>
+
+                <div class="fgi">
+                  <label>Age</label>
+                  <input id="ai-age" type="number" placeholder="25" min="10" max="100">
+                </div>
+
+                <div class="fgi">
+                  <label>Gender</label>
+                  <select id="ai-gender">
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other / Prefer not to say</option>
+                  </select>
+                </div>
+
+                <div class="fgi">
+                  <label>Height (cm)</label>
+                  <input id="ai-h" type="number" placeholder="170">
+                </div>
+
+                <div class="fgi">
+                  <label>Weight (kg)</label>
+                  <input id="ai-w" type="number" placeholder="70">
+                </div>
+
+                <div class="fgi">
+                  <label>Training Days / Week</label>
+                  <select id="ai-days">
+                    <option value="2">2 days</option>
+                    <option value="3" selected>3 days</option>
+                    <option value="4">4 days</option>
+                    <option value="5">5 days</option>
+                    <option value="6">6 days</option>
+                  </select>
+                </div>
+
+                <div class="fgi">
+                  <label>Health Notes / Injuries</label>
+                  <input id="ai-notes" placeholder="e.g., knee pain, asthma...">
+                </div>
+
+                <div class="fgi full" style="margin-top:4px">
+                  <button class="btn btn-p" style="width:100%;padding:11px" onclick="runAIPrediction()">📊 Generate My
+                    Plan</button>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- RIGHT: Tabbed Result -->
+            <div class="panel" id="ai-result-panel">
+              <div class="pt">📊 Prediction Result</div>
+
+              <!-- Tab bar -->
+              <div id="ai-tabs" style="display:none;gap:6px;margin-bottom:16px;flex-wrap:wrap;display:none">
+                <button class="btn btn-p btn-sm" id="ai-tab-bmi" onclick="switchAITab('bmi')">📏 BMI</button>
+                <button class="btn btn-s btn-sm" id="ai-tab-plan" onclick="switchAITab('plan')">🎫 Plan</button>
+                <button class="btn btn-s btn-sm" id="ai-tab-workout" onclick="switchAITab('workout')">💪
+                  Workout</button>
+                <button class="btn btn-s btn-sm" id="ai-tab-diet" onclick="switchAITab('diet')">🥗 Diet</button>
+              </div>
+
+              <!-- Empty state -->
+              <div id="ai-empty" class="empty">
+                <div class="empty-ico">✨</div>
+                <p>Fill in your profile and click <b>Generate My Plan</b>.</p>
+              </div>
+
+              <!-- BMI Panel -->
+              <div id="ai-panel-bmi" style="display:none"></div>
+              <!-- Plan Panel -->
+              <div id="ai-panel-plan" style="display:none"></div>
+              <!-- Workout Panel -->
+              <div id="ai-panel-workout" style="display:none"></div>
+              <!-- Diet Panel -->
+              <div id="ai-panel-diet" style="display:none"></div>
+            </div>
+
+          </div>
+
+          <!-- Prediction History -->
+          <div style="margin-top:16px" class="panel">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div class="pt" style="margin-bottom:0">🕓 Prediction History</div>
+              <button class="btn btn-s btn-sm" onclick="loadAIHistory()">🔄 Refresh</button>
+            </div>
+            <div id="ai-history">
+              <div class="empty">
+                <div class="empty-ico">📂</div>
+                <p>No predictions yet.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="page" id="page-attendance">
+
+          <!-- ══ TRAINER ATTENDANCE VIEW ══════════════════════════════ -->
+          <div id="att-trainer-view" style="display:none">
+
+            <!-- Stat strip -->
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px" id="tr-att-strip">
+              <div class="stat-card c1">
+                <div class="stat-label">Today's Check-ins</div>
+                <div class="stat-val" id="tr-att-today">—</div>
+                <div class="stat-sub">From your members</div>
+                <div class="stat-icon">📋</div>
+              </div>
+              <div class="stat-card c2">
+                <div class="stat-label">Here Right Now</div>
+                <div class="stat-val" id="tr-att-now">—</div>
+                <div class="stat-sub">Currently in gym</div>
+                <div class="stat-icon">🟢</div>
+              </div>
+              <div class="stat-card c3">
+                <div class="stat-label">This Week</div>
+                <div class="stat-val" id="tr-att-week">—</div>
+                <div class="stat-sub">Total visits</div>
+                <div class="stat-icon">📊</div>
+              </div>
+              <div class="stat-card c4" style="cursor:pointer" onclick="toggleAbsentPanel()">
+                <div class="stat-label">⚠️ Absent This Week</div>
+                <div class="stat-val" id="tr-att-absent" style="color:var(--danger)">—</div>
+                <div class="stat-sub">Tap to see who</div>
+                <div class="stat-icon">🚨</div>
+              </div>
+            </div>
+
+            <!-- Who's here NOW panel -->
+            <div class="panel" style="margin-bottom:16px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                <div>
+                  <div class="pt" style="margin-bottom:2px;display:flex;align-items:center;gap:8px">
+                    <span
+                      style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px rgba(34,197,94,.25);animation:pulse 2s infinite"></span>
+                    Currently In Gym
+                  </div>
+                  <div style="font-size:12px;color:var(--text-muted)">Members checked in with no checkout</div>
+                </div>
+                <button class="btn btn-s btn-sm" onclick="loadTrainerAttendancePage()">🔄 Refresh</button>
+              </div>
+              <div id="tr-att-live-panel">
+                <div class="empty">
+                  <div class="empty-ico">🏋️</div>
+                  <p>Loading…</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Absent members alert (collapsible) -->
+            <div id="tr-absent-panel" style="display:none;margin-bottom:16px">
+              <div class="panel" style="border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.03)">
+                <div class="pt" style="color:var(--danger);margin-bottom:12px">🚨 No Visits This Week</div>
+                <div id="tr-absent-list">
+                  <div class="empty">
+                    <div class="empty-ico">⚠️</div>
+                    <p>Loading…</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent attendance log -->
+            <div class="panel">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <div class="pt" style="margin-bottom:0">📋 Recent Attendance Log</div>
+                <input class="srch-input" placeholder="🔍 Search…" id="srch-att" oninput="filterAtt()"
+                  style="width:200px">
+              </div>
+              <div class="tbl-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Member</th>
+                      <th>Check In</th>
+                      <th>Check Out</th>
+                      <th>Duration</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbl-att"></tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ══ ADMIN VIEW: staff attendance only ════════════════════ -->
+          <div id="att-admin-header">
+            <!-- Weekly trainer overview -->
+            <div id="att-weekly-overview" style="margin-bottom:20px"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+              <div style="font-size:16px;font-weight:700">🧑‍💼 Staff Attendance</div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-p admin-only" id="att-btn-staff" onclick="openStaffCheckin()">🧑‍💼 Staff
+                  Check-In</button>
+              </div>
+            </div>
+            <!-- Staff attendance table -->
+            <div id="att-panel-staff">
+              <div class="tbl-wrap">
+                <div class="srch-bar"><input class="srch-input" placeholder="🔍 Search staff..." id="srch-staff-att"
+                    oninput="filterStaffAtt()"></div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Staff</th>
+                      <th>Role</th>
+                      <th>Check In</th>
+                      <th>Check Out</th>
+                      <th>Duration</th>
+                      <th>Notes</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbl-staff-att"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- USER view: personal attendance -->
+          <div id="att-user-view" style="display:none">
+
+            <!-- Stats row -->
+            <div class="stats-grid" style="margin-bottom:20px">
+              <div class="stat-card c1">
+                <div class="stat-label">This Month</div>
+                <div class="stat-val" id="uatt-month">—</div>
+                <div class="stat-sub">Visits</div>
+                <div class="stat-icon">📅</div>
+              </div>
+              <div class="stat-card c2">
+                <div class="stat-label">Streak</div>
+                <div class="stat-val" id="uatt-streak">—</div>
+                <div class="stat-sub">Consecutive days</div>
+                <div class="stat-icon">🔥</div>
+              </div>
+              <div class="stat-card c3">
+                <div class="stat-label">Total Visits</div>
+                <div class="stat-val" id="uatt-total">—</div>
+                <div class="stat-sub">All time</div>
+                <div class="stat-icon">🏆</div>
+              </div>
+              <div class="stat-card c4">
+                <div class="stat-label">Total Time</div>
+                <div class="stat-val" id="uatt-time">—</div>
+                <div class="stat-sub">Hours trained</div>
+                <div class="stat-icon">⏱️</div>
+              </div>
+            </div>
+
+            <!-- Actions + filter bar -->
+            <div
+              style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <button class="btn btn-p" onclick="openUserCheckin()">✅ Check In</button>
+                <button class="btn btn-s" id="uatt-checkout-btn" onclick="userCheckOut()" style="display:none">🚪 Check
+                  Out</button>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <select id="uatt-month-filter" onchange="loadUserAttendance()"
+                  style="padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px">
+                  <option value="">All Time</option>
+                </select>
+                <input class="srch-input" style="width:180px" placeholder="🔍 Search date..." id="srch-uatt"
+                  oninput="loadUserAttendance()">
+              </div>
+            </div>
+
+            <!-- Attendance table -->
+            <div class="tbl-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Check In</th>
+                    <th>Check Out</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="tbl-uatt"></tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+        <div class="page" id="page-classes">
+
+          <!-- ══ TRAINER VIEW ════════════════════════════════════════ -->
+          <div id="cls-trainer-view" style="display:none">
+            <div id="cls-today-spotlight" style="margin-bottom:20px"></div>
+            <div class="panel">
+              <div class="pt" style="margin-bottom:14px">📅 My Weekly Schedule</div>
+              <div class="sched-wrap">
+                <div class="sched-grid" id="sched-grid-trainer"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ══ USER VIEW ════════════════════════════════════════════ -->
+          <div id="cls-user-view" style="display:none">
+            <!-- Trainer info card -->
+            <div style="margin-bottom:24px">
+              <div class="pt" style="margin-bottom:10px">🏋️ My Assigned Trainer</div>
+              <div id="user-trainer-card"></div>
+            </div>
+            <!-- Weekly schedule grid (trainer's classes) -->
+            <div class="panel">
+              <div class="pt" style="margin-bottom:14px">📅 My Weekly Class Schedule</div>
+              <div class="sched-wrap">
+                <div class="sched-grid" id="sched-grid-user"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ══ ADMIN VIEW ════════════════════════════════════════════ -->
+          <div id="cls-admin-view">
+            <div class="sec-header">
+              <div></div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-p admin-only" onclick="openAssignTrainer()" style="background:var(--info)">👤 Assign Instructor</button>
+                <button class="btn btn-p admin-only" onclick="openAddClass()">➕ Add Class</button>
+              </div>
+            </div>
+            <div class="sched-wrap">
+              <div class="sched-grid" id="sched-grid"></div>
+            </div>
+
+            <div id="trainer-assignments" style="margin-top:20px"></div>
+            <!-- ── Trainer Schedules Section ── -->
+            <div id="trainer-sched-section" style="margin-top:20px"></div>
+          </div>
+
+        </div>
+        <div class="page" id="page-equipment">
+          <div class="sec-header">
+            <div></div><button class="btn btn-p" onclick="openM('mo-equipment')">➕ Add Equipment</button>
+          </div>
+          <div class="eq-grid" id="eq-grid"></div>
+        </div>
+        <div class="page" id="page-staff">
+          <div class="sec-header">
+            <div></div><button class="btn btn-p" onclick="openM('mo-staff')">➕ Add Staff</button>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Hired</th>
+                  <th>Salary</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tbl-staff"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="page" id="page-plans">
+          <div class="sec-header">
+            <div></div><button class="btn btn-p admin-only" onclick="openM('mo-plan')">➕ Add Plan</button>
+          </div>
+          <div class="eq-grid" id="plans-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /#app-shell -->
+  <!-- MODALS -->
+
+  <!-- ── Trainer: Class Bulk Attendance Modal ───────────────────── -->
+  <div class="mo" id="mo-class-att">
+    <div class="modal" style="max-width:520px">
+      <div class="mh">
+        <div class="mt">✅ Take Class Attendance</div>
+        <button class="mc" onclick="closeM('mo-class-att')">✕</button>
+      </div>
+      <div class="mb">
+        <div id="ca-class-info"
+          style="margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+          <div style="font-size:15px;font-weight:700" id="ca-class-name">—</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:3px" id="ca-class-meta">—</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:600">Mark who attended:</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-s" onclick="caSelectAll(true)">✅ All</button>
+            <button class="btn btn-sm btn-s" onclick="caSelectAll(false)">☐ None</button>
+          </div>
+        </div>
+        <div id="ca-member-list" style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto">
+        </div>
+        <input type="hidden" id="ca-class-id">
+        <div
+          style="margin-top:14px;padding:10px 12px;background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.2);border-radius:8px;font-size:12px;color:var(--text-muted)">
+          ⏱ Check-in time will be set to <strong>now</strong>. Members already checked in today will be skipped.
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-s" onclick="closeM('mo-class-att')">Cancel</button>
+        <button class="btn btn-p" onclick="submitClassAttendance()">✅ Submit Attendance</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Trainer: Update Member Goal Modal ──────────────────────────── -->
+  <div class="mo" id="mo-tr-goal">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">🎯 Update Member Goal</div>
+        <button class="mc" onclick="closeM('mo-tr-goal')">✕</button>
+      </div>
+      <div class="mb">
+        <input type="hidden" id="tr-goal-member-id">
+        <input type="hidden" id="tr-goal-id">
+        <div style="font-size:13px;font-weight:700;color:var(--text-muted);margin-bottom:12px" id="tr-goal-member-name">
+        </div>
+        <div class="fg">
+          <div class="fgi full"><label>Goal Type</label>
+            <select id="tr-goal-type" onchange="trToggleGoalFields()">
+              <option value="weight_loss">Lose Weight</option>
+              <option value="weight_gain">Gain Weight</option>
+              <option value="custom">Custom Goal</option>
+            </select>
+          </div>
+          <div class="fgi full" id="tr-goal-label-row" style="display:none"><label>Goal Label</label>
+            <input id="tr-goal-label" placeholder="e.g. Run 5km, 20 push-ups…">
+          </div>
+          <div class="fgi" id="tr-goal-start-row"><label>Starting Weight (kg)</label>
+            <input id="tr-goal-start" type="number" step="0.1" placeholder="e.g. 85">
+          </div>
+          <div class="fgi" id="tr-goal-target-row"><label>Target Weight (kg)</label>
+            <input id="tr-goal-target" type="number" step="0.1" placeholder="e.g. 75">
+          </div>
+          <div class="fgi" id="tr-goal-current-row"><label>Current Weight (kg)</label>
+            <input id="tr-goal-current" type="number" step="0.1" placeholder="e.g. 82">
+          </div>
+          <div class="fgi full"><label>Notes (optional)</label>
+            <input id="tr-goal-notes" placeholder="Any context…">
+          </div>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-s" onclick="closeM('mo-tr-goal')">Cancel</button>
+        <button class="btn btn-p" onclick="saveTrainerGoal()">💾 Save Goal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Trainer: Edit Attendance Record Modal ──────────────────────── -->
+  <div class="mo" id="mo-tr-att-edit">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">✏️ Edit Check-In Record</div>
+        <button class="mc" onclick="closeM('mo-tr-att-edit')">✕</button>
+      </div>
+      <div class="mb">
+        <input type="hidden" id="tr-att-edit-id">
+        <div class="fg">
+          <div class="fgi"><label>Check-In Time</label>
+            <input type="datetime-local" id="tr-att-edit-in">
+          </div>
+          <div class="fgi"><label>Check-Out Time</label>
+            <input type="datetime-local" id="tr-att-edit-out">
+          </div>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-s" onclick="closeM('mo-tr-att-edit')">Cancel</button>
+        <button class="btn btn-p" onclick="saveTrainerAtt()">💾 Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Trainer: Edit Shift Modal ──────────────────────────────────── -->
+  <div class="mo" id="mo-tr-shift-edit">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">✏️ Edit Shift Record</div>
+        <button class="mc" onclick="closeM('mo-tr-shift-edit')">✕</button>
+      </div>
+      <div class="mb">
+        <input type="hidden" id="tr-shift-edit-id">
+        <div class="fg">
+          <div class="fgi"><label>Clock-In Time</label>
+            <input type="datetime-local" id="tr-shift-edit-in">
+          </div>
+          <div class="fgi"><label>Clock-Out Time</label>
+            <input type="datetime-local" id="tr-shift-edit-out">
+          </div>
+          <div class="fgi full"><label>Notes</label>
+            <input id="tr-shift-edit-notes" placeholder="Optional notes…">
+          </div>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-s" onclick="closeM('mo-tr-shift-edit')">Cancel</button>
+        <button class="btn btn-p" onclick="saveTrainerShift()">💾 Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mo" id="mo-member">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">Add New Member</div><button class="mc" onclick="closeM('mo-member')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <div class="fgi"><label>First Name</label><input id="m-fn" placeholder="John"></div>
+          <div class="fgi"><label>Last Name</label><input id="m-ln" placeholder="Doe"></div>
+          <div class="fgi"><label>Email</label><input id="m-em" type="email" placeholder="john@example.com"></div>
+          <div class="fgi"><label>Phone</label><input id="m-ph" placeholder="+94 77 456 4910 "></div>
+          <div class="fgi"><label>Date of Birth</label><input id="m-dob" type="date"></div>
+          <div class="fgi"><label>Gender</label><select id="m-gen">
+              <option>Male</option>
+              <option>Female</option>
+              <option>Other</option>
+            </select></div>
+          <div class="fgi full"><label>Address</label><input id="m-addr" placeholder="123 Main St, City"></div>
+          <div class="fgi"><label>Membership Plan</label><select id="m-plan"></select></div>
+          <div class="fgi"><label>Start Date</label><input id="m-start" type="date"></div>
+          <div class="fgi"><label>Emergency Contact</label><input id="m-ec" placeholder="Name & Phone"></div>
+          <div class="fgi"><label>Medical Notes</label><input id="m-med" placeholder="Any conditions..."></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-member')">Cancel</button><button class="btn btn-p"
+          onclick="addMember()">Add Member</button></div>
+    </div>
+  </div>
+  <div class="mo" id="mo-edit-member">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">Edit Member</div><button class="mc" onclick="closeM('mo-edit-member')">✕</button>
+      </div>
+      <div class="mb"><input type="hidden" id="em-id">
+        <div class="fg">
+          <div class="fgi"><label>First Name</label><input id="em-fn"></div>
+          <div class="fgi"><label>Last Name</label><input id="em-ln"></div>
+          <div class="fgi"><label>Email</label><input id="em-em" type="email"></div>
+          <div class="fgi"><label>Phone</label><input id="em-ph"></div>
+          <div class="fgi"><label>Status</label><select id="em-st">
+              <option>active</option>
+              <option>expired</option>
+              <option>paused</option>
+            </select></div>
+          <div class="fgi"><label>Gender</label><select id="em-gen">
+              <option>Male</option>
+              <option>Female</option>
+              <option>Other</option>
+            </select></div>
+          <div class="fgi full"><label>Address</label><input id="em-addr"></div>
+          <div class="fgi full"><label>Emergency Contact</label><input id="em-ec"></div>
+          <div class="fgi full"><label>Medical Notes</label><input id="em-med"></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-edit-member')">Cancel</button><button
+          class="btn btn-p" onclick="saveMember()">Save</button></div>
+    </div>
+  </div>
+  <div class="mo" id="mo-membership">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">New Membership</div><button class="mc" onclick="closeM('mo-membership')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <div class="fgi full"><label>Member</label><select id="ms-mem"></select></div>
+          <div class="fgi full"><label>Plan</label><select id="ms-plan" onchange="fillMsPlan()"></select></div>
+          <div class="fgi"><label>Start Date</label><input id="ms-start" type="date"></div>
+          <div class="fgi"><label>End Date</label><input id="ms-end" type="date"></div>
+          <div class="fgi"><label>Amount (Rs)</label><input id="ms-amt" type="number"></div>
+          <div class="fgi"><label>Status</label><select id="ms-st">
+              <option>active</option>
+              <option>pending</option>
+              <option>paused</option>
+            </select></div>
+          <div class="fgi full"><label>Notes</label><input id="ms-notes" placeholder="Optional notes..."></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-membership')">Cancel</button><button
+          class="btn btn-p" onclick="addMembership()">Create</button></div>
+    </div>
+  </div>
+  <div class="mo" id="mo-edit-ms">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">✏️ Edit Membership</div><button class="mc" onclick="closeM('mo-edit-ms')">✕</button>
+      </div>
+      <div class="mb"><input type="hidden" id="ems-id">
+        <div class="fg">
+          <div class="fgi full"><label>Member</label><input id="ems-mem-name" disabled style="opacity:0.6"></div>
+          <div class="fgi full"><label>Change Plan</label><select id="ems-plan" onchange="fillEditMsPlan()"></select>
+          </div>
+          <div class="fgi"><label>Start Date</label><input id="ems-start" type="date"></div>
+          <div class="fgi"><label>End Date</label><input id="ems-end" type="date"></div>
+          <div class="fgi"><label>Amount (Rs)</label><input id="ems-amt" type="number"></div>
+          <div class="fgi"><label>Status</label><select id="ems-st">
+              <option>active</option>
+              <option>pending</option>
+              <option>paused</option>
+              <option>expired</option>
+            </select></div>
+          <div class="fgi full"><label>Notes</label><input id="ems-notes" placeholder="Optional notes..."></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-edit-ms')">Cancel</button><button class="btn btn-p"
+          onclick="saveMS()">💾 Save Changes</button></div>
+    </div>
+  </div>
+  <div class="mo" id="mo-payment">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">Record Payment</div><button class="mc" onclick="closeM('mo-payment')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <div class="fgi full"><label>Member</label><select id="p-mem"></select></div>
+          <div class="fgi"><label>Amount (RS)</label><input id="p-amt" type="number" placeholder="0.00"></div>
+          <div class="fgi"><label>Method</label><select id="p-method">
+              <option>cash</option>
+              <option>card</option>
+              <option>transfer</option>
+              <option value="credit_card">Credit Card</option>
+            </select></div>
+          <div class="fgi full"><label>Plan / Description</label><input id="p-plan" placeholder="Monthly Plan..."></div>
+          <div class="fgi"><label>Date</label><input id="p-date" type="date"></div>
+          <div class="fgi full"><label>Note</label><input id="p-note" placeholder="Optional..."></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-payment')">Cancel</button><button class="btn btn-p"
+          onclick="addPayment()">Record</button></div>
+    </div>
+  </div>
+  <div class="mo" id="mo-user-payment">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">💳 Credit Card Payment</div><button class="mc" onclick="closeM('mo-user-payment')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <div class="fgi full"><label>Plan / Description</label><input id="up-plan" placeholder="e.g. Monthly Plan...">
+          </div>
+          <div class="fgi"><label>Amount (Rs)</label><input id="up-amt" type="number" placeholder="0.00"></div>
+          <div class="fgi"><label>Date</label><input id="up-date" type="date"></div>
+          <div class="fgi full"><label>Cardholder Name</label><input id="up-card-name" placeholder="Name on card"></div>
+          <div class="fgi full"><label>Card Number</label><input id="up-card-num" type="text" maxlength="19"
+              placeholder="•••• •••• •••• ••••" oninput="fmtCard(this)"></div>
+          <div class="fgi"><label>Expiry (MM/YY)</label><input id="up-card-exp" type="text" maxlength="5"
+              placeholder="MM/YY" oninput="fmtExp(this)"></div>
+          <div class="fgi"><label>CVV</label><input id="up-card-cvv" type="password" maxlength="4" placeholder="•••">
+          </div>
+          <div class="fgi full"><label>Note (optional)</label><input id="up-note" placeholder="Optional..."></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-user-payment')">Cancel</button><button
+          class="btn btn-p" onclick="addUserPayment()">💳 Submit Payment</button></div>
+    </div>
+  </div>
+  <div class="mo" id="mo-checkin">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">Member Check-In</div><button class="mc" onclick="closeM('mo-checkin')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <div class="fgi full"><label>Select Member</label><select id="ci-mem"></select></div>
+          <div class="fgi"><label>Check-In Time</label><input id="ci-in" type="datetime-local"></div>
+          <div class="fgi"><label>Check-Out (optional)</label><input id="ci-out" type="datetime-local"></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-checkin')">Cancel</button><button class="btn btn-p"
+          onclick="checkIn()">Check In</button></div>
+    </div>
+  </div>
+  <div class="mo" id="mo-staff-checkin">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">🧑‍💼 Staff Check-In</div><button class="mc" onclick="closeM('mo-staff-checkin')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <div class="fgi full"><label>Select Staff</label><select id="sci-staff"></select></div>
+          <div class="fgi"><label>Check-In Time</label><input id="sci-in" type="datetime-local"></div>
+          <div class="fgi"><label>Check-Out (optional)</label><input id="sci-out" type="datetime-local"></div>
+          <div class="fgi full"><label>Notes (optional)</label><input id="sci-notes"
+              placeholder="e.g. Half day, Late arrival..."></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-staff-checkin')">Cancel</button><button
+          class="btn btn-p" onclick="staffCheckIn()">✅ Check In</button></div>
+    </div>
+  </div>
+
+  <div class="mo" id="mo-edit-staff-att">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">✏️ Edit Staff Attendance</div><button class="mc"
+          onclick="closeM('mo-edit-staff-att')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <input type="hidden" id="esa-id">
+          <div class="fgi full"><label>Staff Member</label><input id="esa-staff-name" disabled
+              style="opacity:0.6;cursor:not-allowed"></div>
+          <div class="fgi"><label>Check-In Time</label><input id="esa-in" type="datetime-local"></div>
+          <div class="fgi"><label>Check-Out Time</label><input id="esa-out" type="datetime-local"></div>
+          <div class="fgi full"><label>Notes</label><input id="esa-notes" placeholder="e.g. Half day, Late arrival...">
+          </div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-edit-staff-att')">Cancel</button><button
+          class="btn btn-p" onclick="saveStaffAtt()">💾 Save Changes</button></div>
+    </div>
+  </div>
+  <!-- ── Login Notification Pop-up ─────────────────────────────── -->
+  <div class="mo" id="mo-notify" style="z-index:9999">
+    <div class="modal" style="max-width:520px;padding:0;overflow:hidden">
+      <!-- Header -->
+      <div id="notify-header"
+        style="padding:20px 22px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+        <div id="notify-icon" style="font-size:26px;line-height:1">🔔</div>
+        <div style="flex:1">
+          <div id="notify-title" style="font-size:16px;font-weight:800">Notifications</div>
+          <div id="notify-subtitle" style="font-size:12px;color:var(--text-muted);margin-top:2px"></div>
+        </div>
+        <button class="mc" onclick="closeM('mo-notify')" style="position:static;opacity:.6">✕</button>
+      </div>
+      <!-- Body -->
+      <div id="notify-body"
+        style="padding:16px 20px;max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:10px"></div>
+      <!-- Footer -->
+      <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
+        <button class="btn btn-p" onclick="closeM('mo-notify')" style="min-width:100px">Got it ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Admin: Post Announcement Modal ────────────────────────── -->
+  <div class="mo" id="mo-announcement">
+    <div class="modal" style="max-width:460px">
+      <div class="mh">
+        <div class="mt">📢 Post Announcement</div>
+        <button class="mc" onclick="closeM('mo-announcement')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg" style="grid-template-columns:1fr">
+          <div class="fgi">
+            <label>Title</label>
+            <input id="ann-title" placeholder="e.g. Gym closed on Sunday...">
+          </div>
+          <div class="fgi">
+            <label>Message</label>
+            <textarea id="ann-detail" rows="3"
+              style="resize:vertical;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit"
+              placeholder="Write your announcement here..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-s" onclick="closeM('mo-announcement')">Cancel</button>
+        <button class="btn btn-p" onclick="postAnnouncement()">📢 Post</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Trainer Schedule Modal ──────────────────────────────────── -->
+  <div class="mo" id="mo-trainer-sched">
+    <div class="modal" style="max-width:500px">
+      <div class="mh">
+        <div class="mt">🗓 Set Trainer Schedule</div>
+        <button class="mc" onclick="closeM('mo-trainer-sched')">✕</button>
+      </div>
+      <div class="mb">
+        <input type="hidden" id="ts-id">
+        <div id="ts-trainer-name" style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--primary)"></div>
+        <div style="margin-bottom:16px">
+          <label style="display:block;margin-bottom:10px">Working Days</label>
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px" id="ts-days-grid">
+            <label class="ts-day-lbl" data-day="Monday"><input type="checkbox" value="Monday" class="ts-day-cb"
+                style="display:none">
+              <div class="ts-day-btn">MON</div>
+            </label>
+            <label class="ts-day-lbl" data-day="Tuesday"><input type="checkbox" value="Tuesday" class="ts-day-cb"
+                style="display:none">
+              <div class="ts-day-btn">TUE</div>
+            </label>
+            <label class="ts-day-lbl" data-day="Wednesday"><input type="checkbox" value="Wednesday" class="ts-day-cb"
+                style="display:none">
+              <div class="ts-day-btn">WED</div>
+            </label>
+            <label class="ts-day-lbl" data-day="Thursday"><input type="checkbox" value="Thursday" class="ts-day-cb"
+                style="display:none">
+              <div class="ts-day-btn">THU</div>
+            </label>
+            <label class="ts-day-lbl" data-day="Friday"><input type="checkbox" value="Friday" class="ts-day-cb"
+                style="display:none">
+              <div class="ts-day-btn">FRI</div>
+            </label>
+            <label class="ts-day-lbl" data-day="Saturday"><input type="checkbox" value="Saturday" class="ts-day-cb"
+                style="display:none">
+              <div class="ts-day-btn">SAT</div>
+            </label>
+            <label class="ts-day-lbl" data-day="Sunday"><input type="checkbox" value="Sunday" class="ts-day-cb"
+                style="display:none">
+              <div class="ts-day-btn">SUN</div>
+            </label>
+          </div>
+        </div>
+        <div class="fg">
+          <div class="fgi"><label>Shift Start Time</label><input id="ts-start" type="time" value="09:00"></div>
+          <div class="fgi"><label>Shift End Time</label><input id="ts-end" type="time" value="17:00"></div>
+        </div>
+        <div id="ts-class-warning"
+          style="display:none;margin-top:14px;padding:12px;background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);border-radius:10px;font-size:12px;color:var(--warning)">
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-s" onclick="closeM('mo-trainer-sched')">Cancel</button>
+        <button class="btn btn-p" onclick="saveTrainerSched()">💾 Save Schedule</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mo" id="mo-class">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">➕ Add Class</div><button class="mc" onclick="closeM('mo-class')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <div class="fgi full"><label>Class Name</label><input id="cl-name"
+              placeholder="e.g. Morning Yoga, HIIT Blast..."></div>
+          <div class="fgi"><label>Day</label><select id="cl-day" onchange="updateAvailableTrainers()">
+              <option>Monday</option>
+              <option>Tuesday</option>
+              <option>Wednesday</option>
+              <option>Thursday</option>
+              <option>Friday</option>
+              <option>Saturday</option>
+              <option>Sunday</option>
+            </select></div>
+          <div class="fgi"><label>Time</label><input id="cl-time" type="time" onchange="updateAvailableTrainers()">
+          </div>
+          <div class="fgi"><label>Duration (min)</label><input id="cl-dur" type="number" placeholder="60" min="15"
+              max="180" onchange="updateAvailableTrainers()"></div>
+          <div class="fgi"><label>Max Capacity</label><input id="cl-cap" type="number" placeholder="20" min="1"></div>
+          <div class="fgi full">
+            <label>Assign Instructor <span
+                style="font-size:10px;color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0">(only
+                available trainers shown)</span></label>
+            <select id="cl-trainer">
+              <option value="">— Assign later —</option>
+            </select>
+            <div id="cl-trainer-hint" style="font-size:11px;color:var(--text-muted);margin-top:4px"></div>
+          </div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="clearAddClass()">Clear</button><button class="btn btn-s"
+          onclick="closeM('mo-class')">Cancel</button><button class="btn btn-p" onclick="addClass()">Add Class</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mo" id="mo-edit-class">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">✏️ Edit Class</div><button class="mc" onclick="closeM('mo-edit-class')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <input type="hidden" id="ec-id">
+          <div class="fgi full"><label>Class Name</label><input id="ec-name" placeholder="e.g. Morning Yoga..."></div>
+          <div class="fgi"><label>Day</label><select id="ec-day">
+              <option>Monday</option>
+              <option>Tuesday</option>
+              <option>Wednesday</option>
+              <option>Thursday</option>
+              <option>Friday</option>
+              <option>Saturday</option>
+              <option>Sunday</option>
+            </select></div>
+          <div class="fgi"><label>Time</label><input id="ec-time" type="time"></div>
+          <div class="fgi"><label>Duration (min)</label><input id="ec-dur" type="number" min="15" max="180"></div>
+          <div class="fgi"><label>Max Capacity</label><input id="ec-cap" type="number" min="1"></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-edit-class')">Cancel</button><button
+          class="btn btn-p" onclick="saveClass()">💾 Save Changes</button></div>
+    </div>
+  </div>
+
+  <div class="mo" id="mo-assign-trainer">
+    <div class="modal" style="max-width:500px">
+      <div class="mh">
+        <div class="mt">👤 Assign Instructor to Classes</div><button class="mc"
+          onclick="closeM('mo-assign-trainer')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg" style="grid-template-columns:1fr">
+          <div class="fgi"><label>Select Trainer</label><select id="at-trainer" onchange="loadAssignClasses()">
+              <option value="">— Pick a trainer —</option>
+            </select></div>
+          <div class="fgi">
+            <label>Select Classes to Assign</label>
+            <div id="at-classes"
+              style="border:1px solid var(--border);border-radius:10px;padding:10px;max-height:280px;overflow-y:auto;background:var(--surface2);display:flex;flex-direction:column;gap:6px">
+              <div style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px 0">Select a trainer
+                first</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-assign-trainer')">Cancel</button><button
+          class="btn btn-p" onclick="assignTrainer()">💾 Save Assignments</button></div>
+    </div>
+  </div>
+  <div class="mo" id="mo-equipment">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">Add Equipment</div><button class="mc" onclick="closeM('mo-equipment')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <div class="fgi"><label>Name</label><input id="eq-name" placeholder="Treadmill..."></div>
+          <div class="fgi"><label>Category</label><select id="eq-cat">
+              <option>Cardio</option>
+              <option>Strength</option>
+              <option>Free Weights</option>
+              <option>Flexibility</option>
+              <option>Other</option>
+            </select></div>
+          <div class="fgi"><label>Quantity</label><input id="eq-qty" type="number" placeholder="1"></div>
+          <div class="fgi"><label>Condition</label><select id="eq-cond">
+              <option>Excellent</option>
+              <option>Good</option>
+              <option>Fair</option>
+              <option>Needs Repair</option>
+            </select></div>
+          <div class="fgi"><label>Purchase Date</label><input id="eq-date" type="date"></div>
+          <div class="fgi"><label>Next Maintenance</label><input id="eq-maint" type="date"></div>
+          <div class="fgi full"><label>Notes</label><input id="eq-notes" placeholder="Serial, warranty..."></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-equipment')">Cancel</button><button
+          class="btn btn-p" onclick="addEquipment()">Add</button></div>
+    </div>
+  </div>
+
+  <div class="mo" id="mo-edit-equipment">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">✏️ Edit Equipment</div><button class="mc" onclick="closeM('mo-edit-equipment')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <input type="hidden" id="eeq-id">
+          <div class="fgi full"><label>Name</label><input id="eeq-name" placeholder="Treadmill..."></div>
+          <div class="fgi"><label>Category</label><select id="eeq-cat">
+              <option>Cardio</option>
+              <option>Strength</option>
+              <option>Free Weights</option>
+              <option>Flexibility</option>
+              <option>Other</option>
+            </select></div>
+          <div class="fgi"><label>Quantity</label><input id="eeq-qty" type="number" min="1"></div>
+          <div class="fgi"><label>Condition</label><select id="eeq-cond">
+              <option>Excellent</option>
+              <option>Good</option>
+              <option>Fair</option>
+              <option>Needs Repair</option>
+            </select></div>
+          <div class="fgi"><label>Purchase Date</label><input id="eeq-date" type="date"></div>
+          <div class="fgi"><label>Next Maintenance</label><input id="eeq-maint" type="date"></div>
+          <div class="fgi full"><label>Notes</label><input id="eeq-notes" placeholder="Serial, warranty..."></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-edit-equipment')">Cancel</button><button
+          class="btn btn-p" onclick="saveEquip()">💾 Save Changes</button></div>
+    </div>
+  </div>
+  <div class="mo" id="mo-staff">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">➕ Add Staff</div><button class="mc" onclick="closeM('mo-staff')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <div class="fgi"><label>First Name</label><input id="sf-fn" placeholder="First name"></div>
+          <div class="fgi"><label>Last Name</label><input id="sf-ln" placeholder="Last name"></div>
+          <div class="fgi"><label>Email</label><input id="sf-em" type="email" placeholder="email@example.com"></div>
+          <div class="fgi"><label>Phone</label><input id="sf-ph" placeholder="+94 77 456 4910"></div>
+          <div class="fgi"><label>Role</label><select id="sf-role" onchange="toggleStaffLogin()">
+              <option>Trainer</option>
+              <option>Receptionist</option>
+              <option>Manager</option>
+              <option>Cleaner</option>
+              <option>Nutritionist</option>
+            </select></div>
+          <div class="fgi"><label>Hire Date</label><input id="sf-hire" type="date"></div>
+          <div class="fgi"><label>Salary (Rs)</label><input id="sf-sal" type="number" placeholder="0.00"></div>
+          <div class="fgi"><label>Schedule</label><input id="sf-sched" placeholder="Mon-Fri 9am-5pm"></div>
+          <!-- Login account section -->
+          <div class="fgi full" style="margin-top:4px">
+            <div style="border-top:1px solid var(--border);padding-top:14px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <div style="font-size:13px;font-weight:700">🔐 Login Account</div>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+                  <input type="checkbox" id="sf-create-login" checked onchange="toggleStaffLogin()">
+                  Create login account
+                </label>
+              </div>
+              <div id="sf-login-fields" class="fg" style="grid-template-columns:1fr 1fr;gap:12px">
+                <div class="fgi" style="margin:0"><label>Username</label><input id="sf-uname"
+                    placeholder="e.g. john.doe"></div>
+                <div class="fgi" style="margin:0"><label>Password</label><input id="sf-pw" type="password"
+                    placeholder="Min 6 characters"></div>
+              </div>
+              <div id="sf-login-note"
+                style="margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;font-size:11px;color:var(--text-muted)">
+                💡 Trainer & Manager roles get app access. Username must be unique.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="clearAddStaff()">Clear</button><button class="btn btn-s"
+          onclick="closeM('mo-staff')">Cancel</button><button class="btn btn-p" onclick="addStaff()">Add Staff</button>
+      </div>
+    </div>
+  </div>
+  <div class="mo" id="mo-edit-staff">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">✏️ Edit Staff</div><button class="mc" onclick="closeM('mo-edit-staff')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <input type="hidden" id="es-id">
+          <div class="fgi"><label>First Name</label><input id="es-fn" placeholder="First name"></div>
+          <div class="fgi"><label>Last Name</label><input id="es-ln" placeholder="Last name"></div>
+          <div class="fgi"><label>Email</label><input id="es-em" type="email"></div>
+          <div class="fgi"><label>Phone</label><input id="es-ph" placeholder="+94 77 4564 910"></div>
+          <div class="fgi"><label>Role</label><select id="es-role">
+              <option>Trainer</option>
+              <option>Receptionist</option>
+              <option>Manager</option>
+              <option>Cleaner</option>
+              <option>Nutritionist</option>
+            </select></div>
+          <div class="fgi"><label>Hire Date</label><input id="es-hire" type="date"></div>
+          <div class="fgi"><label>Salary (Rs)</label><input id="es-sal" type="number"></div>
+          <div class="fgi"><label>Schedule</label><input id="es-sched" placeholder="Mon-Fri 9am-5pm"></div>
+          <!-- Login section -->
+          <div class="fgi full" style="margin-top:4px">
+            <div style="border-top:1px solid var(--border);padding-top:14px">
+              <div style="font-size:13px;font-weight:700;margin-bottom:12px">🔐 Login Account</div>
+              <div class="fg" style="grid-template-columns:1fr 1fr;gap:12px">
+                <div class="fgi" style="margin:0">
+                  <label>Username</label>
+                  <input id="es-uname" placeholder="e.g. john.doe">
+                  <div id="es-uname-note" style="font-size:11px;color:var(--text-muted);margin-top:3px"></div>
+                </div>
+                <div class="fgi" style="margin:0">
+                  <label>New Password <span style="font-weight:400;color:var(--text-muted)">(leave blank to
+                      keep)</span></label>
+                  <input id="es-pw" type="password" placeholder="Leave blank to keep current">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-edit-staff')">Cancel</button><button
+          class="btn btn-p" onclick="saveStaff()">Save Changes</button></div>
+    </div>
+  </div>
+  <div class="mo" id="mo-plan">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">Add Plan</div><button class="mc" onclick="closeM('mo-plan')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <div class="fgi"><label>Plan Name</label><input id="pl-name" placeholder="Monthly Premium"></div>
+          <div class="fgi"><label>Duration (days)</label><input id="pl-dur" type="number" placeholder="30"></div>
+          <div class="fgi"><label>Price (Rs)</label><input id="pl-price" type="number" placeholder="49.99"></div>
+          <div class="fgi"><label>Category</label><select id="pl-cat">
+              <option>Basic</option>
+              <option>Standard</option>
+              <option>Premium</option>
+              <option>VIP</option>
+            </select></div>
+          <div class="fgi full"><label>Features (comma-separated)</label><input id="pl-feat"
+              placeholder="Pool access, Sauna, Personal training..."></div>
+          <div class="fgi full"><label>Description</label><input id="pl-desc" placeholder="Description..."></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-plan')">Cancel</button><button class="btn btn-p"
+          onclick="addPlan()">Add</button></div>
+    </div>
+  </div>
+  <div class="mo" id="mo-edit-plan">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">&#9999;&#65039; Edit Plan</div><button class="mc"
+          onclick="closeM('mo-edit-plan')">&#x2715;</button>
+      </div>
+      <div class="mb"><input type="hidden" id="epl-id">
+        <div class="fg">
+          <div class="fgi"><label>Plan Name</label><input id="epl-name" placeholder="Monthly Premium"></div>
+          <div class="fgi"><label>Duration (days)</label><input id="epl-dur" type="number" placeholder="30"></div>
+          <div class="fgi"><label>Price</label><input id="epl-price" type="number" placeholder="49.99"></div>
+          <div class="fgi"><label>Category</label><select id="epl-cat">
+              <option>Basic</option>
+              <option>Standard</option>
+              <option>Premium</option>
+              <option>VIP</option>
+            </select></div>
+          <div class="fgi full"><label>Features (comma-separated)</label><input id="epl-feat"
+              placeholder="Pool access, Sauna, Personal training..."></div>
+          <div class="fgi full"><label>Description</label><input id="epl-desc" placeholder="Description..."></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-edit-plan')">Cancel</button><button
+          class="btn btn-p" onclick="saveEditPlan()">&#128190; Save Changes</button></div>
+    </div>
+  </div>
+  <!-- REGISTER MODAL -->
+  <div class="mo" id="mo-register">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">Create User Account</div>
+        <button class="mc" onclick="closeM('mo-register')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <div class="fgi"><label>First Name</label><input id="rg-fn" placeholder="John"></div>
+          <div class="fgi"><label>Last Name</label><input id="rg-ln" placeholder="Doe"></div>
+          <div class="fgi full"><label>Email (this will be your username)</label><input id="rg-em" type="email"
+              placeholder="you@example.com"></div>
+          <div class="fgi"><label>Phone</label><input id="rg-ph" placeholder="+94 ..."></div>
+          <div class="fgi"><label>Date of Birth</label><input id="rg-dob" type="date"></div>
+          <div class="fgi"><label>Gender</label><select id="rg-gen">
+              <option>Male</option>
+              <option>Female</option>
+              <option>Other</option>
+            </select></div>
+          <div class="fgi"><label>Password</label><input id="rg-pw" type="password" placeholder="••••••••"></div>
+          <div class="fgi"><label>Confirm Password</label><input id="rg-pw2" type="password" placeholder="••••••••">
+          </div>
+          <div class="fgi full">
+            <label>Membership Plan</label>
+            <select id="rg-plan" onchange="fillRegPlan()">
+              <option value="">— Select a Plan (optional) —</option>
+            </select>
+          </div>
+          <div class="fgi" id="rg-plan-info" style="display:none;grid-column:1/-1">
+            <div
+              style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text-muted);line-height:1.7"
+              id="rg-plan-details"></div>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--text-muted);line-height:1.5">
+          This creates a <b>User</b> account, a member profile, and (if a plan is chosen) a membership record visible to
+          admin.
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-s" onclick="clearRegisterFields()">Clear</button>
+        <button class="btn btn-s" onclick="closeM('mo-register')">Cancel</button>
+        <button class="btn btn-p" onclick="registerUser()">Create & Login</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mo" id="mo-goal">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">🎯 Set My Goal</div><button class="mc" onclick="closeM('mo-goal')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg"><input type="hidden" id="goal-id">
+          <div class="fgi full"><label>Goal Type</label><select id="goal-type" onchange="toggleGoalFields()">
+              <option value="weight_loss">Lose Weight</option>
+              <option value="weight_gain">Gain Weight</option>
+              <option value="custom">Custom Goal</option>
+            </select></div>
+          <div class="fgi full" id="goal-label-row" style="display:none"><label>Goal Label</label><input id="goal-label"
+              placeholder="e.g., Run 5km, do 20 push-ups..."></div>
+          <div class="fgi" id="goal-start-row"><label>Starting Weight (kg)</label><input id="goal-start" type="number"
+              step="0.1" placeholder="e.g., 85"></div>
+          <div class="fgi" id="goal-target-row"><label>Target Weight (kg)</label><input id="goal-target" type="number"
+              step="0.1" placeholder="e.g., 75"></div>
+          <div class="fgi" id="goal-current-row"><label>Current Weight (kg)</label><input id="goal-current"
+              type="number" step="0.1" placeholder="e.g., 82"></div>
+          <div class="fgi full"><label>Notes (optional)</label><input id="goal-notes"
+              placeholder="Any extra context..."></div>
+        </div>
+      </div>
+      <div class="mf"><button class="btn btn-s" onclick="closeM('mo-goal')">Cancel</button><button class="btn btn-p"
+          onclick="saveGoal()">💾 Save Goal</button></div>
+    </div>
+  </div>
+  <div class="mo" id="mo-user-checkin">
+    <div class="modal" style="max-width:400px">
+      <div class="mh">
+        <div class="mt">✅ Log My Visit</div>
+        <button class="mc" onclick="closeM('mo-user-checkin')">✕</button>
+      </div>
+      <div class="mb">
+        <div class="fg">
+          <div class="fgi full">
+            <label>Check-In Time</label>
+            <input id="uci-in" type="datetime-local">
+          </div>
+          <div class="fgi full">
+            <label>Check-Out Time <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+            <input id="uci-out" type="datetime-local">
+          </div>
+          <div class="fgi full">
+            <label>Notes <span style="color:var(--text-muted);font-weight:400">(optional)</span></label>
+            <input id="uci-notes" placeholder="e.g. Leg day, cardio session...">
+          </div>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-s" onclick="closeM('mo-user-checkin')">Cancel</button>
+        <button class="btn btn-p" onclick="submitUserCheckin()">✅ Log Visit</button>
+      </div>
+    </div>
+  </div>
+  <div class="mo" id="mo-avatar">
+    <div class="modal" style="max-width:520px;width:100%">
+      <div class="mh">
+        <div class="mt">🖼️ Change Avatar</div>
+        <button class="mc" onclick="closeM('mo-avatar')">✕</button>
+      </div>
+      <div class="mb">
+
+        <!-- Live preview -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:20px">
+          <div id="av-preview"
+            style="width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:34px;font-weight:800;overflow:hidden;border:3px solid var(--border);box-shadow:0 0 0 4px rgba(249,115,22,.15)">
+          </div>
+          <div style="font-size:11px;color:var(--text-muted)">Preview</div>
+        </div>
+
+        <!-- Tab switcher -->
+        <div style="display:flex;border-bottom:2px solid var(--border);margin-bottom:20px">
+          <button id="av-tab-btn-upload" onclick="switchAvatarTab('upload')"
+            style="flex:1;padding:10px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:var(--text);border-bottom:3px solid var(--primary);margin-bottom:-2px;transition:all .15s">
+            📤 Upload Photo
+          </button>
+          <button id="av-tab-btn-preset" onclick="switchAvatarTab('preset')"
+            style="flex:1;padding:10px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:400;color:var(--text-muted);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s">
+            🎨 Choose Avatar
+          </button>
+        </div>
+
+        <!-- Upload tab -->
+        <div id="av-tab-upload">
+          <label id="av-drop-zone"
+            style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:32px 20px;border:2px dashed var(--border);border-radius:14px;cursor:pointer;transition:all .2s;background:var(--surface2)"
+            onmouseover="this.style.borderColor='var(--primary)';this.style.background='rgba(249,115,22,.04)'"
+            onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
+            <div style="font-size:40px;line-height:1">📷</div>
+            <div style="font-size:14px;font-weight:700;color:var(--text)">Click to select a photo</div>
+            <div style="font-size:11px;color:var(--text-muted)">JPG, PNG or GIF &nbsp;·&nbsp; Max 2 MB</div>
+            <input id="av-file-input" type="file" accept="image/*" style="display:none"
+              onchange="handleAvatarFile(this)">
+          </label>
+          <div id="av-upload-error"
+            style="display:none;margin-top:10px;padding:9px 13px;background:rgba(239,68,68,.1);color:#ef4444;border-radius:8px;font-size:12px;font-weight:600">
+          </div>
+        </div>
+
+        <!-- Preset tab -->
+        <div id="av-tab-preset" style="display:none">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Your initials will appear on the chosen
+            gradient</div>
+          <div id="av-preset-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px"></div>
+        </div>
+
+      </div>
+      <div class="mf">
+        <button class="btn btn-s" onclick="closeM('mo-avatar')">Cancel</button>
+        <button class="btn btn-p" id="av-save-btn" onclick="saveAvatar()">💾 Save Avatar</button>
+      </div>
+    </div>
+  </div>
+  <!-- ══ Peak Hours: Assign Trainer Modal ════════════════════════ -->
+  <div class="mo" id="mo-pk-assign">
+    <div class="modal" style="max-width:460px">
+      <div class="mh">
+        <div class="mt">👤 Assign Trainer to Class</div>
+        <button class="mc" onclick="closeM('mo-pk-assign')">✕</button>
+      </div>
+      <div class="mb">
+        <input type="hidden" id="pka-class-id">
+        <!-- Class info card -->
+        <div id="pka-class-info"
+          style="padding:12px 14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);margin-bottom:16px">
+          <div style="font-size:15px;font-weight:700" id="pka-class-name">—</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px" id="pka-class-meta">—</div>
+          <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap" id="pka-class-badges"></div>
+        </div>
+        <!-- Current trainer -->
+        <div id="pka-current-trainer-row"
+          style="margin-bottom:14px;padding:10px 12px;border-radius:8px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.18);font-size:12px;display:none">
+          <span style="color:var(--text-muted)">Currently assigned: </span>
+          <span style="font-weight:700;color:#ef4444" id="pka-current-trainer">—</span>
+          <span style="color:var(--text-muted)"> — reassigning will replace them.</span>
+        </div>
+        <!-- Trainer select -->
+        <div class="fgi" style="margin-bottom:14px">
+          <label>Select Trainer</label>
+          <select id="pka-trainer-sel" style="width:100%">
+            <option value="">— Loading trainers… —</option>
+          </select>
+        </div>
+        <!-- Trainer load preview -->
+        <div id="pka-trainer-load"
+          style="display:none;padding:10px 12px;background:var(--surface2);border-radius:8px;font-size:12px;border:1px solid var(--border)">
+          <div style="font-weight:700;margin-bottom:4px" id="pka-load-name"></div>
+          <div style="color:var(--text-muted)" id="pka-load-detail"></div>
+          <div id="pka-load-warn" style="display:none;margin-top:6px;color:#f97316;font-weight:600"></div>
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-s" onclick="closeM('mo-pk-assign')">Cancel</button>
+        <button class="btn btn-p" onclick="pkSaveAssign()">💾 Assign Trainer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Peak Hours: Create Overflow Class Modal ════════════════════ -->
+  <div class="mo" id="mo-pk-overflow">
+    <div class="modal" style="max-width:500px">
+      <div class="mh">
+        <div class="mt">➕ Create Overflow Class</div>
+        <button class="mc" onclick="closeM('mo-pk-overflow')">✕</button>
+      </div>
+      <div class="mb">
+        <input type="hidden" id="pko-source-id">
+        <!-- Source class info -->
+        <div
+          style="padding:12px 14px;background:rgba(249,115,22,.06);border-radius:10px;border:1px solid rgba(249,115,22,.2);margin-bottom:16px">
+          <div
+            style="font-size:11px;color:var(--primary);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">
+            Based on full class</div>
+          <div style="font-size:14px;font-weight:700" id="pko-source-name">—</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:3px" id="pko-source-meta">—</div>
+        </div>
+        <!-- New class fields -->
+        <div class="fg">
+          <div class="fgi full">
+            <label>Overflow Class Name</label>
+            <input id="pko-name" placeholder="e.g. HIIT & Core — Overflow">
+          </div>
+          <div class="fgi">
+            <label>Day</label>
+            <select id="pko-day">
+              <option>Monday</option>
+              <option>Tuesday</option>
+              <option>Wednesday</option>
+              <option>Thursday</option>
+              <option>Friday</option>
+              <option>Saturday</option>
+              <option>Sunday</option>
+            </select>
+          </div>
+          <div class="fgi">
+            <label>Time</label>
+            <input id="pko-time" type="time">
+          </div>
+          <div class="fgi">
+            <label>Duration (min)</label>
+            <input id="pko-dur" type="number" value="60" min="15" max="180">
+          </div>
+          <div class="fgi">
+            <label>Capacity</label>
+            <input id="pko-cap" type="number" value="15" min="1">
+          </div>
+          <div class="fgi full">
+            <label>Assign Trainer</label>
+            <select id="pko-trainer" onchange="pkOvfTrainerChanged()">
+              <option value="">— Select trainer —</option>
+            </select>
+          </div>
+          <!-- Trainer load warning for overflow -->
+          <div class="fgi full" id="pko-trainer-warn-row" style="display:none">
+            <div
+              style="padding:9px 12px;background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);border-radius:8px;font-size:12px;color:#eab308">
+              ⚠️ <span id="pko-trainer-warn-txt"></span>
+            </div>
+          </div>
+          <div class="fgi full">
+            <label>Move Waitlisted Members? <span
+                style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
+            <select id="pko-move-waitlist">
+              <option value="1">Yes — auto-enroll waitlisted members</option>
+              <option value="0">No — leave as open class</option>
+            </select>
+          </div>
+        </div>
+        <div
+          style="margin-top:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--text-muted);line-height:1.6">
+          💡 This creates a new class in the schedule. If live MySQL is connected, it will be saved to the database
+          automatically.
+        </div>
+      </div>
+      <div class="mf">
+        <button class="btn btn-s" onclick="closeM('mo-pk-overflow')">Cancel</button>
+        <button class="btn btn-p" onclick="pkSaveOverflow()">✅ Create Overflow Class</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-c" id="toast-c"></div>
+  <script src="app.js"></script>
+  <script src="api-client.js"></script>
+
+  <!-- ══ ROSTER MODAL ══════════════════════════════════════════ -->
+  <div id="mo-roster" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:600px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <div id="roster-title" style="font-size:16px;font-weight:700"></div>
+        <button onclick="closeRoster()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1">✕</button>
+      </div>
+      <div style="overflow-y:auto;padding:16px 24px">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">
+              <th style="padding:8px 0;text-align:left;border-bottom:1px solid var(--border)">Member</th>
+              <th style="padding:8px 0;text-align:left;border-bottom:1px solid var(--border)">Phone</th>
+              <th style="padding:8px 0;text-align:left;border-bottom:1px solid var(--border)">Status</th>
+              <th style="padding:8px 0;text-align:left;border-bottom:1px solid var(--border)">Enrolled</th>
+            </tr>
+          </thead>
+          <tbody id="roster-body"></tbody>
+        </table>
+      </div>
+      <div style="padding:16px 24px;border-top:1px solid var(--border);flex-shrink:0">
+        <button onclick="closeRoster()" class="btn btn-s" style="width:100%">Close</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>
+<script>
+  // ═══════════════════════════════════════════════════════════════
+  //  FitCore — Peak Capacity Monitor (Simple)
+  // ═══════════════════════════════════════════════════════════════
+
+  var _peakData = null;
+
+  // ── Load / refresh ──────────────────────────────────────────────
+  function loadPeakDash() {
+    var apiBase = (typeof API !== 'undefined') ? API : 'http://localhost/fitcore/api.php';
+    fetch(apiBase + '?action=peak_dashboard')
+      .then(function (r) { return r.json(); })
+      .then(function (d) { _peakData = d; pkRender(); })
+      .catch(function () { _peakData = _pkDemo(); pkRender(); });
+    _setText('pk-last-refresh', new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  }
+
+  // ── Render the capacity list ────────────────────────────────────
+  function pkRender() {
+    var sel = document.getElementById('pk-day-select');
+    var day = sel ? sel.value : 'Monday';
+
+    var all = (_peakData && _peakData.all_classes) ? _peakData.all_classes : [];
+    var cls = all.filter(function (c) { return c.day === day; });
+
+    // Sort by time ascending
+    cls.sort(function (a, b) { return (a.time || '').localeCompare(b.time || ''); });
+
+    // ── Work out class status relative to NOW ──────────────────
+    var now = new Date();
+    var nowMins = now.getHours() * 60 + now.getMinutes();
+    var isToday = (function () {
+      var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      return days[now.getDay()] === day;
+    })();
+
+    function classMins(timeStr) {
+      var parts = (timeStr || '00:00').split(':');
+      return parseInt(parts[0] || 0) * 60 + parseInt(parts[1] || 0);
+    }
+
+    function getStatus(c) {
+      if (!isToday) return 'normal'; // other days — no time logic
+      var start = classMins(c.time);
+      var duration = parseInt(c.duration || 60);
+      var end = start + duration;
+      if (nowMins >= end) return 'done';
+      if (nowMins >= start) return 'live';
+      return 'upcoming';
+    }
+
+    // Pills — count only upcoming + live classes (not done ones)
+    var active = cls.filter(function (c) { return getStatus(c) !== 'done'; });
+    _setText('pks-total', active.length);
+    _setText('pks-full', active.filter(function (c) { return parseInt(c.fill_pct || 0) >= 100; }).length);
+    _setText('pks-near', active.filter(function (c) { var p = parseInt(c.fill_pct || 0); return p >= 80 && p < 100; }).length);
+
+    var el = document.getElementById('pk-cap-list');
+    if (!el) return;
+
+    if (!cls.length) {
+      el.innerHTML = '<div class="empty"><div class="empty-ico">📅</div><p>No classes on ' + _esc(day) + '</p></div>';
+      return;
+    }
+
+    // ── Section label if today ──────────────────────────────────
+    var nowLabel = '';
+    if (isToday) {
+      var h = now.getHours(), m = now.getMinutes();
+      var ampm = h < 12 ? 'AM' : 'PM';
+      var h12 = h % 12 || 12;
+      var mStr = m < 10 ? '0' + m : m;
+      nowLabel = '<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;'
+        + 'display:flex;align-items:center;gap:6px">'
+        + '<div class="pk-live-dot"></div>'
+        + 'Now ' + h12 + ':' + mStr + ' ' + ampm
+        + ' — showing today\'s classes'
+        + '</div>';
+    }
+
+    var rows = cls.map(function (c, idx) {
+      var status = getStatus(c);
+      var isDone = status === 'done';
+      var isLive = status === 'live';
+      var pct = Math.min(parseInt(c.fill_pct || 0), 100);
+      var confirmed = parseInt(c.confirmed || 0);
+      var capacity = parseInt(c.capacity || 0);
+      var waitlisted = parseInt(c.waitlisted || 0);
+      var isOver = pct >= 80;
+
+      // ── Styling per status ──────────────────────────────────
+      var rowOpacity = isDone ? 'opacity:.38;' : '';
+      var rowBg = isLive ? 'background:rgba(34,197,94,.04);border-radius:8px;padding:10px 10px;margin:0 -10px;' : 'padding:12px 0;';
+      var timeColor = isDone ? 'color:var(--text-muted)' : isLive ? 'color:#22c55e' : 'color:var(--primary)';
+      var barClr = isDone ? '#555' : pct >= 100 ? '#ef4444' : pct >= 80 ? '#f97316' : pct >= 60 ? '#eab308' : '#22c55e';
+
+      // ── Status badge ────────────────────────────────────────
+      var badge = '';
+      if (isDone) {
+        badge = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;'
+          + 'background:var(--surface2);color:var(--text-muted)">✓ Done</span>';
+      } else if (isLive) {
+        badge = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;'
+          + 'background:rgba(34,197,94,.15);color:#22c55e;display:flex;align-items:center;gap:4px">'
+          + '<div class="pk-live-dot"></div>Live</span>';
+        if (pct >= 100) {
+          badge += '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;'
+            + 'background:rgba(239,68,68,.15);color:#ef4444">🔴 FULL'
+            + (waitlisted > 0 ? ' +' + waitlisted + ' wait' : '') + '</span>';
+        } else if (pct >= 80) {
+          badge += '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;'
+            + 'background:rgba(249,115,22,.15);color:#f97316">⚠️ ' + pct + '%'
+            + (waitlisted > 0 ? ' +' + waitlisted + ' wait' : '') + '</span>';
+        }
+      } else {
+        if (pct >= 100) {
+          badge = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;'
+            + 'background:rgba(239,68,68,.15);color:#ef4444">🔴 FULL'
+            + (waitlisted > 0 ? ' +' + waitlisted + ' wait' : '') + '</span>';
+        } else if (pct >= 80) {
+          badge = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;'
+            + 'background:rgba(249,115,22,.15);color:#f97316">⚠️ ' + pct + '%'
+            + (waitlisted > 0 ? ' +' + waitlisted + ' wait' : '') + '</span>';
+        }
+      }
+
+      // ── Trainer ─────────────────────────────────────────────
+      var trainerHtml = c.trainer_name
+        ? '<span style="font-size:11px;color:var(--text-muted)">👤 ' + _esc(c.trainer_name) + '</span>'
+        : '<span style="font-size:11px;color:#ef4444;font-weight:700">⚠ No trainer</span>';
+
+      // ── Assign button — only for active overflow classes ────
+      var assignBtn = (!isDone && isOver)
+        ? '<button class="pk-action-btn pk-action-assign" onclick="pkOpenAssign(' + JSON.stringify(c).replace(/"/g, '&quot;') + ')" style="white-space:nowrap">👤 Assign Trainer</button>'
+        : '';
+
+      var isLast = (idx === cls.length - 1);
+
+      return '<div style="' + rowOpacity + rowBg + (isLast ? '' : 'border-bottom:1px solid var(--border);') + 'display:flex;align-items:center;gap:12px">'
+        + '<div style="font-family:monospace;font-size:13px;font-weight:700;' + timeColor + ';min-width:52px">'
+        + _fmt12(c.time) + '</div>'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="font-size:13px;font-weight:' + (isDone ? '400' : '700') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
+        + (isDone ? 'color:var(--text-muted)' : '') + '">' + _esc(c.name) + '</div>'
+        + '<div style="display:flex;align-items:center;gap:10px;margin-top:3px;flex-wrap:wrap">'
+        + (isDone ? '' : trainerHtml)
+        + '<span style="font-size:11px;color:var(--text-muted)">🪑 ' + confirmed + '/' + capacity + '</span>'
+        + '</div>'
+        + '<div style="margin-top:6px;height:4px;background:var(--border);border-radius:3px;overflow:hidden;width:160px">'
+        + '<div style="height:100%;border-radius:3px;background:' + barClr + ';width:' + pct + '%;transition:width .5s"></div>'
+        + '</div>'
+        + '</div>'
+        + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">'
+        + badge
+        + assignBtn
+        + '</div>'
+        + '</div>';
+    }).join('');
+
+    el.innerHTML = nowLabel + rows;
+  }
+
+  // ── 12-hour time formatter ──────────────────────────────────────
+  function _fmt12(t) {
+    if (!t) return '--:--';
+    var p = t.split(':'), h = parseInt(p[0]), m = p[1] || '00';
+    return (h % 12 || 12) + ':' + m + (h < 12 ? ' AM' : ' PM');
+  }
+
+
+  // ── Open assign trainer modal ───────────────────────────────────
+  function pkOpenAssign(c) {
+    var apiBase = (typeof API !== 'undefined') ? API : 'http://localhost/fitcore/api.php';
+    document.getElementById('pka-class-id').value = c.id;
+    document.getElementById('pka-class-name').textContent = c.name;
+    document.getElementById('pka-class-meta').textContent =
+      c.day + '  ' + c.time + '  •  ' + (c.confirmed || 0) + '/' + (c.capacity || 0) + ' enrolled'
+      + (parseInt(c.waitlisted || 0) > 0 ? '  •  ' + c.waitlisted + ' on waitlist' : '');
+
+    // Capacity badges
+    var pct = parseInt(c.fill_pct || 0);
+    var barClr = pct >= 100 ? '#ef4444' : '#f97316';
+    document.getElementById('pka-class-badges').innerHTML =
+      '<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:rgba(239,68,68,.12);color:' + barClr + '">'
+      + (pct >= 100 ? '🔴 FULL' : '⚠️ ' + pct + '% full') + '</span>';
+
+    // Current trainer
+    var curRow = document.getElementById('pka-current-trainer-row');
+    if (c.trainer_name) {
+      curRow.style.display = '';
+      document.getElementById('pka-current-trainer').textContent = c.trainer_name;
+    } else {
+      curRow.style.display = 'none';
+    }
+
+    // Load trainers
+    fetch(apiBase + '?action=get&table=staff')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var list = Array.isArray(d) ? d : (d.data || d.rows || []);
+        // Filter to Trainer role only (case-insensitive)
+        var trainers = list.filter(function (t) {
+          return (t.role || '').toLowerCase() === 'trainer';
+        });
+        var sel = document.getElementById('pka-trainer-sel');
+        sel.innerHTML = '<option value="">— Select trainer —</option>'
+          + trainers.map(function (t) {
+            return '<option value="' + t.id + '">' + _esc(t.fname + ' ' + t.lname) + '</option>';
+          }).join('');
+        if (c.trainer_id) sel.value = c.trainer_id;
+      })
+      .catch(function () {
+        document.getElementById('pka-trainer-sel').innerHTML =
+          '<option value="">— Select trainer —</option>'
+          + '<option value="1">Mike Johnson</option>'
+          + '<option value="3">Carlos Mendez</option>';
+      });
+
+    document.getElementById('pka-trainer-load').style.display = 'none';
+    openM('mo-pk-assign');
+  }
+
+  // ── Save trainer assignment ─────────────────────────────────────
+  function pkSaveAssign() {
+    var classId = document.getElementById('pka-class-id').value;
+    var trainerId = document.getElementById('pka-trainer-sel').value;
+    if (!trainerId) { alert('Please select a trainer.'); return; }
+
+    var apiBase = (typeof API !== 'undefined') ? API : 'http://localhost/fitcore/api.php';
+    fetch(apiBase + '?action=assign_class_trainer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ class_id: parseInt(classId), staff_id: parseInt(trainerId) })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function () {
+        closeM('mo-pk-assign');
+        if (typeof showToast === 'function') showToast('Trainer assigned successfully.', 'success');
+        loadPeakDash();
+      })
+      .catch(function () {
+        closeM('mo-pk-assign');
+        if (typeof showToast === 'function') showToast('Trainer assigned (local).', 'success');
+      });
+  }
+
+  // ── Demo data ───────────────────────────────────────────────────
+  function _pkDemo() {
+    return {
+      all_classes: [
+        { id: 26, name: 'Weekend Warriors', day: 'Saturday', time: '08:00', capacity: 20, trainer_name: 'Carlos Mendez', confirmed: 18, waitlisted: 3, fill_pct: 90 },
+        { id: 27, name: 'Hatha Yoga', day: 'Saturday', time: '09:30', capacity: 15, trainer_name: 'Mike Johnson', confirmed: 15, waitlisted: 5, fill_pct: 100 },
+        { id: 28, name: 'HIIT & Core', day: 'Saturday', time: '11:00', capacity: 18, trainer_name: 'Carlos Mendez', confirmed: 10, waitlisted: 0, fill_pct: 56 },
+        { id: 29, name: 'Strength Circuit', day: 'Saturday', time: '14:00', capacity: 12, trainer_name: '', confirmed: 9, waitlisted: 0, fill_pct: 75 },
+        { id: 30, name: 'Relaxation Yoga', day: 'Saturday', time: '16:00', capacity: 10, trainer_name: 'Carlos Mendez', confirmed: 4, waitlisted: 0, fill_pct: 40 },
+        { id: 31, name: 'Gentle Yoga', day: 'Sunday', time: '09:00', capacity: 12, trainer_name: 'Mike Johnson', confirmed: 12, waitlisted: 2, fill_pct: 100 },
+        { id: 32, name: 'Active Recovery', day: 'Sunday', time: '10:30', capacity: 15, trainer_name: 'Carlos Mendez', confirmed: 8, waitlisted: 0, fill_pct: 53 },
+        { id: 34, name: 'Power Pump', day: 'Monday', time: '06:30', capacity: 16, trainer_name: 'Carlos Mendez', confirmed: 14, waitlisted: 1, fill_pct: 88 },
+        { id: 35, name: 'Morning Yoga', day: 'Monday', time: '07:00', capacity: 15, trainer_name: '', confirmed: 8, waitlisted: 0, fill_pct: 53 },
+        { id: 36, name: 'CrossFit HIIT', day: 'Monday', time: '09:00', capacity: 20, trainer_name: 'Carlos Mendez', confirmed: 20, waitlisted: 4, fill_pct: 100 },
+        { id: 37, name: 'Evening Spin', day: 'Monday', time: '18:00', capacity: 18, trainer_name: 'Mike Johnson', confirmed: 16, waitlisted: 2, fill_pct: 89 },
+        { id: 39, name: 'Spinning', day: 'Tuesday', time: '06:30', capacity: 18, trainer_name: 'Mike Johnson', confirmed: 11, waitlisted: 0, fill_pct: 61 },
+        { id: 38, name: 'Pilates', day: 'Tuesday', time: '10:00', capacity: 12, trainer_name: 'Carlos Mendez', confirmed: 9, waitlisted: 0, fill_pct: 75 },
+        { id: 41, name: 'Yoga Flow', day: 'Wednesday', time: '07:00', capacity: 15, trainer_name: 'Carlos Mendez', confirmed: 15, waitlisted: 3, fill_pct: 100 },
+        { id: 40, name: 'Boxing', day: 'Wednesday', time: '18:00', capacity: 15, trainer_name: 'Mike Johnson', confirmed: 13, waitlisted: 1, fill_pct: 87 },
+        { id: 42, name: 'Zumba', day: 'Thursday', time: '19:00', capacity: 25, trainer_name: 'Carlos Mendez', confirmed: 22, waitlisted: 0, fill_pct: 88 },
+        { id: 43, name: 'Strength Training', day: 'Friday', time: '08:00', capacity: 10, trainer_name: 'Mike Johnson', confirmed: 7, waitlisted: 0, fill_pct: 70 }
+      ]
+    };
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────
+  function _esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+  function _setText(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; }
+
+  // ── Auto-init ───────────────────────────────────────────────────
+  (function () {
+    var _loaded = false;
+    setInterval(function () {
+      var adminEl = document.getElementById('dash-admin');
+      if (adminEl && adminEl.style.display !== 'none' && !_loaded) {
+        _loaded = true;
+        // Set dropdown to today's day
+        var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        var todayName = days[new Date().getDay()];
+        var sel = document.getElementById('pk-day-select');
+        if (sel) sel.value = todayName;
+        loadPeakDash();
+      }
+      if (adminEl && adminEl.style.display === 'none') _loaded = false;
+    }, 1000);
+  })();
+</script>
