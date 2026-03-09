@@ -11,7 +11,6 @@
 - [Overview](#overview)
 - [Features](#features)
 - [Technology Stack](#technology-stack)
-- [System Architecture](#system-architecture)
 - [Project Structure](#project-structure)
 - [Database Schema](#database-schema)
 - [System Diagrams](#system-diagrams)
