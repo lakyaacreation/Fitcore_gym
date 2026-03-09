@@ -433,7 +433,7 @@ fitcore/
 
 **1. Clone the repository**
 ```bash
-git clone https://github.com/lakyaacreation/fitcore.git
+git clone https://github.com/lakyaacreation/Fitcore_gym.git
 ```
 
 **2. Place files in XAMPP**
